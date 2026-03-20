@@ -7,12 +7,119 @@ let anthropicClient = null;
 function getClient() {
   if (!anthropicClient) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY environment variable is not set');
-    }
+    if (!apiKey) return null;
     anthropicClient = new Anthropic({ apiKey });
   }
   return anthropicClient;
+}
+
+// ---------------------------------------------------------------------------
+// Demo mode — returns pre-built flowcharts when no API key is configured
+// ---------------------------------------------------------------------------
+
+const DEMO_FLOWCHARTS = {
+  login: {
+    nodes: [
+      { id: 'n1', type: 'start', text: 'Start' },
+      { id: 'n2', type: 'process', text: 'Enter Credentials' },
+      { id: 'n3', type: 'decision', text: 'Login Successful?' },
+      { id: 'n4', type: 'process', text: 'Retry (attempt 1)' },
+      { id: 'n5', type: 'decision', text: 'Login Successful?' },
+      { id: 'n6', type: 'process', text: 'Retry (attempt 2)' },
+      { id: 'n7', type: 'decision', text: 'Login Successful?' },
+      { id: 'n8', type: 'process', text: 'Go to Dashboard' },
+      { id: 'n9', type: 'end', text: 'End — Access Granted' },
+      { id: 'n10', type: 'end', text: 'End — Access Denied' },
+    ],
+    edges: [
+      { from: 'n1', to: 'n2', label: '' },
+      { from: 'n2', to: 'n3', label: '' },
+      { from: 'n3', to: 'n4', label: 'No' },
+      { from: 'n3', to: 'n8', label: 'Yes' },
+      { from: 'n4', to: 'n5', label: '' },
+      { from: 'n5', to: 'n6', label: 'No' },
+      { from: 'n5', to: 'n8', label: 'Yes' },
+      { from: 'n6', to: 'n7', label: '' },
+      { from: 'n7', to: 'n10', label: 'No' },
+      { from: 'n7', to: 'n8', label: 'Yes' },
+      { from: 'n8', to: 'n9', label: '' },
+    ],
+  },
+  payment: {
+    nodes: [
+      { id: 'n1', type: 'start', text: 'Start' },
+      { id: 'n2', type: 'process', text: 'Initiate Payment' },
+      { id: 'n3', type: 'decision', text: 'Payment Successful?' },
+      { id: 'n4', type: 'process', text: 'Retry Payment' },
+      { id: 'n5', type: 'decision', text: 'Retry Successful?' },
+      { id: 'n6', type: 'process', text: 'Show Success Message' },
+      { id: 'n7', type: 'end', text: 'End — Payment Complete' },
+      { id: 'n8', type: 'end', text: 'End — Payment Failed' },
+    ],
+    edges: [
+      { from: 'n1', to: 'n2', label: '' },
+      { from: 'n2', to: 'n3', label: '' },
+      { from: 'n3', to: 'n4', label: 'No / Failure' },
+      { from: 'n3', to: 'n6', label: 'Yes / Success' },
+      { from: 'n4', to: 'n5', label: '' },
+      { from: 'n5', to: 'n8', label: 'No' },
+      { from: 'n5', to: 'n6', label: 'Yes' },
+      { from: 'n6', to: 'n7', label: '' },
+    ],
+  },
+  default: {
+    nodes: [
+      { id: 'n1', type: 'start', text: 'Start' },
+      { id: 'n2', type: 'process', text: 'Process Request' },
+      { id: 'n3', type: 'decision', text: 'Condition Met?' },
+      { id: 'n4', type: 'process', text: 'Handle Yes Path' },
+      { id: 'n5', type: 'process', text: 'Handle No Path' },
+      { id: 'n6', type: 'end', text: 'End' },
+    ],
+    edges: [
+      { from: 'n1', to: 'n2', label: '' },
+      { from: 'n2', to: 'n3', label: '' },
+      { from: 'n3', to: 'n4', label: 'Yes' },
+      { from: 'n3', to: 'n5', label: 'No' },
+      { from: 'n4', to: 'n6', label: '' },
+      { from: 'n5', to: 'n6', label: '' },
+    ],
+  },
+};
+
+function getDemoFlowchart(input) {
+  const lower = input.toLowerCase();
+  if (lower.includes('login') || lower.includes('retry') || lower.includes('再試行') || lower.includes('dubara')) {
+    return DEMO_FLOWCHARTS.login;
+  }
+  if (lower.includes('payment') || lower.includes('pay') || lower.includes('支付') || lower.includes('fail')) {
+    return DEMO_FLOWCHARTS.payment;
+  }
+  return DEMO_FLOWCHARTS.default;
+}
+
+function getDemoEdit(instruction, currentFlowchart) {
+  // Simple demo edit: add a node based on instruction keywords
+  const lower = instruction.toLowerCase();
+  const flowchart = JSON.parse(JSON.stringify(currentFlowchart)); // deep clone
+
+  if (lower.includes('retry') || lower.includes('again')) {
+    const newId = `n${Date.now()}`;
+    const lastProcess = [...flowchart.nodes].reverse().find(n => n.type === 'process');
+    const endNode = flowchart.nodes.find(n => n.type === 'end');
+    if (lastProcess && endNode) {
+      flowchart.nodes.splice(flowchart.nodes.indexOf(endNode), 0, {
+        id: newId, type: 'process', text: 'Retry Step'
+      });
+      flowchart.edges.push({ from: lastProcess.id, to: newId, label: '' });
+      flowchart.edges.push({ from: newId, to: endNode.id, label: '' });
+    }
+  } else if (lower.includes('success') || lower.includes('failure') || lower.includes('change')) {
+    const target = flowchart.nodes.find(n => n.text.toLowerCase().includes('success'));
+    if (target) target.text = target.text.replace(/success/i, 'Failure');
+  }
+
+  return flowchart;
 }
 
 /**
@@ -60,6 +167,13 @@ export async function generateFlowchart(userInput) {
   }
 
   const client = getClient();
+
+  // Demo mode — no API key set
+  if (!client) {
+    console.log('[generate] Demo mode: returning pre-built flowchart');
+    await new Promise(r => setTimeout(r, 800)); // simulate latency
+    return getDemoFlowchart(userInput);
+  }
 
   let lastError = null;
 
@@ -129,6 +243,13 @@ export async function editFlowchart(instruction, currentFlowchart) {
   }
 
   const client = getClient();
+
+  // Demo mode — no API key set
+  if (!client) {
+    console.log('[edit] Demo mode: returning modified flowchart');
+    await new Promise(r => setTimeout(r, 600));
+    return getDemoEdit(instruction, currentFlowchart);
+  }
 
   const userMessage = `Current flowchart JSON:
 ${JSON.stringify(currentFlowchart, null, 2)}
