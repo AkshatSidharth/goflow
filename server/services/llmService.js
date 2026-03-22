@@ -19,71 +19,80 @@ function getClient() {
 
 const DEMO_FLOWCHARTS = {
   login: {
-    nodes: [
-      { id: 'n1', type: 'start', text: 'Start' },
-      { id: 'n2', type: 'process', text: 'Enter Credentials' },
-      { id: 'n3', type: 'decision', text: 'Login Successful?' },
-      { id: 'n4', type: 'process', text: 'Retry (attempt 1)' },
-      { id: 'n5', type: 'decision', text: 'Login Successful?' },
-      { id: 'n6', type: 'process', text: 'Retry (attempt 2)' },
-      { id: 'n7', type: 'decision', text: 'Login Successful?' },
-      { id: 'n8', type: 'process', text: 'Go to Dashboard' },
-      { id: 'n9', type: 'end', text: 'End — Access Granted' },
-      { id: 'n10', type: 'end', text: 'End — Access Denied' },
-    ],
-    edges: [
-      { from: 'n1', to: 'n2', label: '' },
-      { from: 'n2', to: 'n3', label: '' },
-      { from: 'n3', to: 'n4', label: 'No' },
-      { from: 'n3', to: 'n8', label: 'Yes' },
-      { from: 'n4', to: 'n5', label: '' },
-      { from: 'n5', to: 'n6', label: 'No' },
-      { from: 'n5', to: 'n8', label: 'Yes' },
-      { from: 'n6', to: 'n7', label: '' },
-      { from: 'n7', to: 'n10', label: 'No' },
-      { from: 'n7', to: 'n8', label: 'Yes' },
-      { from: 'n8', to: 'n9', label: '' },
-    ],
+    plan: 'A login flow with 10 nodes and retry logic. Credentials are checked up to 3 times across 3 decision nodes — success leads to the dashboard, while 3 consecutive failures deny access.',
+    flowchart: {
+      nodes: [
+        { id: 'n1', type: 'start', text: 'Start' },
+        { id: 'n2', type: 'process', text: 'Enter Credentials' },
+        { id: 'n3', type: 'decision', text: 'Login Successful?' },
+        { id: 'n4', type: 'process', text: 'Retry (attempt 1)' },
+        { id: 'n5', type: 'decision', text: 'Login Successful?' },
+        { id: 'n6', type: 'process', text: 'Retry (attempt 2)' },
+        { id: 'n7', type: 'decision', text: 'Login Successful?' },
+        { id: 'n8', type: 'process', text: 'Go to Dashboard' },
+        { id: 'n9', type: 'end', text: 'End — Access Granted' },
+        { id: 'n10', type: 'end', text: 'End — Access Denied' },
+      ],
+      edges: [
+        { from: 'n1', to: 'n2', label: '' },
+        { from: 'n2', to: 'n3', label: '' },
+        { from: 'n3', to: 'n4', label: 'No' },
+        { from: 'n3', to: 'n8', label: 'Yes' },
+        { from: 'n4', to: 'n5', label: '' },
+        { from: 'n5', to: 'n6', label: 'No' },
+        { from: 'n5', to: 'n8', label: 'Yes' },
+        { from: 'n6', to: 'n7', label: '' },
+        { from: 'n7', to: 'n10', label: 'No' },
+        { from: 'n7', to: 'n8', label: 'Yes' },
+        { from: 'n8', to: 'n9', label: '' },
+      ],
+    },
   },
   payment: {
-    nodes: [
-      { id: 'n1', type: 'start', text: 'Start' },
-      { id: 'n2', type: 'process', text: 'Initiate Payment' },
-      { id: 'n3', type: 'decision', text: 'Payment Successful?' },
-      { id: 'n4', type: 'process', text: 'Retry Payment' },
-      { id: 'n5', type: 'decision', text: 'Retry Successful?' },
-      { id: 'n6', type: 'process', text: 'Show Success Message' },
-      { id: 'n7', type: 'end', text: 'End — Payment Complete' },
-      { id: 'n8', type: 'end', text: 'End — Payment Failed' },
-    ],
-    edges: [
-      { from: 'n1', to: 'n2', label: '' },
-      { from: 'n2', to: 'n3', label: '' },
-      { from: 'n3', to: 'n4', label: 'No / Failure' },
-      { from: 'n3', to: 'n6', label: 'Yes / Success' },
-      { from: 'n4', to: 'n5', label: '' },
-      { from: 'n5', to: 'n8', label: 'No' },
-      { from: 'n5', to: 'n6', label: 'Yes' },
-      { from: 'n6', to: 'n7', label: '' },
-    ],
+    plan: 'A payment flow with 8 nodes. The payment is attempted, and if it fails a retry is offered. Success routes to a confirmation message; a second failure ends with a payment failed state.',
+    flowchart: {
+      nodes: [
+        { id: 'n1', type: 'start', text: 'Start' },
+        { id: 'n2', type: 'process', text: 'Initiate Payment' },
+        { id: 'n3', type: 'decision', text: 'Payment Successful?' },
+        { id: 'n4', type: 'process', text: 'Retry Payment' },
+        { id: 'n5', type: 'decision', text: 'Retry Successful?' },
+        { id: 'n6', type: 'process', text: 'Show Success Message' },
+        { id: 'n7', type: 'end', text: 'End — Payment Complete' },
+        { id: 'n8', type: 'end', text: 'End — Payment Failed' },
+      ],
+      edges: [
+        { from: 'n1', to: 'n2', label: '' },
+        { from: 'n2', to: 'n3', label: '' },
+        { from: 'n3', to: 'n4', label: 'No / Failure' },
+        { from: 'n3', to: 'n6', label: 'Yes / Success' },
+        { from: 'n4', to: 'n5', label: '' },
+        { from: 'n5', to: 'n8', label: 'No' },
+        { from: 'n5', to: 'n6', label: 'Yes' },
+        { from: 'n6', to: 'n7', label: '' },
+      ],
+    },
   },
   default: {
-    nodes: [
-      { id: 'n1', type: 'start', text: 'Start' },
-      { id: 'n2', type: 'process', text: 'Process Request' },
-      { id: 'n3', type: 'decision', text: 'Condition Met?' },
-      { id: 'n4', type: 'process', text: 'Handle Yes Path' },
-      { id: 'n5', type: 'process', text: 'Handle No Path' },
-      { id: 'n6', type: 'end', text: 'End' },
-    ],
-    edges: [
-      { from: 'n1', to: 'n2', label: '' },
-      { from: 'n2', to: 'n3', label: '' },
-      { from: 'n3', to: 'n4', label: 'Yes' },
-      { from: 'n3', to: 'n5', label: 'No' },
-      { from: 'n4', to: 'n6', label: '' },
-      { from: 'n5', to: 'n6', label: '' },
-    ],
+    plan: 'A simple 6-node workflow. A request is processed and checked against a condition — the Yes path and No path each lead to their own handling step before both converge at the end.',
+    flowchart: {
+      nodes: [
+        { id: 'n1', type: 'start', text: 'Start' },
+        { id: 'n2', type: 'process', text: 'Process Request' },
+        { id: 'n3', type: 'decision', text: 'Condition Met?' },
+        { id: 'n4', type: 'process', text: 'Handle Yes Path' },
+        { id: 'n5', type: 'process', text: 'Handle No Path' },
+        { id: 'n6', type: 'end', text: 'End' },
+      ],
+      edges: [
+        { from: 'n1', to: 'n2', label: '' },
+        { from: 'n2', to: 'n3', label: '' },
+        { from: 'n3', to: 'n4', label: 'Yes' },
+        { from: 'n3', to: 'n5', label: 'No' },
+        { from: 'n4', to: 'n6', label: '' },
+        { from: 'n5', to: 'n6', label: '' },
+      ],
+    },
   },
 };
 
@@ -99,7 +108,6 @@ function getDemoFlowchart(input) {
 }
 
 function getDemoEdit(instruction, currentFlowchart) {
-  // Simple demo edit: add a node based on instruction keywords
   const lower = instruction.toLowerCase();
   const flowchart = JSON.parse(JSON.stringify(currentFlowchart)); // deep clone
 
@@ -119,7 +127,10 @@ function getDemoEdit(instruction, currentFlowchart) {
     if (target) target.text = target.text.replace(/success/i, 'Failure');
   }
 
-  return flowchart;
+  return {
+    plan: `Updated the flowchart based on your instruction. The flow now has ${flowchart.nodes.length} nodes and ${flowchart.edges.length} connections.`,
+    flowchart,
+  };
 }
 
 /**
@@ -195,7 +206,12 @@ export async function generateFlowchart(userInput) {
       }
 
       const rawData = extractJSON(responseText);
-      const sanitized = sanitizeFlowchart(rawData);
+
+      // Support both new { plan, flowchart } format and legacy { nodes, edges }
+      const flowchartData = rawData.flowchart || rawData;
+      const plan = rawData.plan || '';
+
+      const sanitized = sanitizeFlowchart(flowchartData);
       const validation = validateFlowchart(sanitized);
 
       if (!validation.valid) {
@@ -205,13 +221,12 @@ export async function generateFlowchart(userInput) {
         console.warn(`Attempt ${attempt} validation errors:`, validation.errors);
 
         if (attempt < 2) {
-          // On second attempt, include the validation errors in the prompt
           continue;
         }
         throw lastError;
       }
 
-      return validation.data;
+      return { plan, flowchart: validation.data };
     } catch (error) {
       lastError = error;
       if (attempt < 2 && error.message.includes('validation failed')) {
@@ -270,12 +285,17 @@ Apply the requested changes and return the complete updated flowchart JSON.`;
   }
 
   const rawData = extractJSON(responseText);
-  const sanitized = sanitizeFlowchart(rawData);
+
+  // Support both new { plan, flowchart } format and legacy { nodes, edges }
+  const flowchartData = rawData.flowchart || rawData;
+  const plan = rawData.plan || '';
+
+  const sanitized = sanitizeFlowchart(flowchartData);
   const validation = validateFlowchart(sanitized);
 
   if (!validation.valid) {
     throw new Error(`Edited flowchart validation failed: ${validation.errors.join('; ')}`);
   }
 
-  return validation.data;
+  return { plan, flowchart: validation.data };
 }

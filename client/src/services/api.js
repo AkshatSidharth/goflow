@@ -40,21 +40,21 @@ export async function generateFlowchart(prompt) {
   if (!response.data.success) {
     throw new Error(response.data.error || 'Failed to generate flowchart');
   }
-  return response.data.data;
+  return { plan: response.data.plan || '', data: response.data.data };
 }
 
 /**
  * Edit an existing flowchart based on a natural language instruction.
  * @param {string} instruction - Edit instruction
  * @param {Object} currentFlowchart - Existing flowchart JSON
- * @returns {Promise<{ nodes: Array, edges: Array }>}
+ * @returns {Promise<{ plan: string, data: { nodes: Array, edges: Array } }>}
  */
 export async function editFlowchart(instruction, currentFlowchart) {
   const response = await api.post('/edit', { instruction, currentFlowchart });
   if (!response.data.success) {
     throw new Error(response.data.error || 'Failed to edit flowchart');
   }
-  return response.data.data;
+  return { plan: response.data.plan || '', data: response.data.data };
 }
 
 /**

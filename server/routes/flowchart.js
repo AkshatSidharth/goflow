@@ -31,7 +31,8 @@ router.post('/generate', async (req, res) => {
 
     console.log(`[generate] Processing prompt (${prompt.length} chars): "${prompt.slice(0, 100)}..."`);
 
-    const flowchartData = await generateFlowchart(prompt.trim());
+    const result = await generateFlowchart(prompt.trim());
+    const { plan, flowchart: flowchartData } = result;
 
     console.log(
       `[generate] Success: ${flowchartData.nodes.length} nodes, ${flowchartData.edges.length} edges`
@@ -39,6 +40,7 @@ router.post('/generate', async (req, res) => {
 
     return res.json({
       success: true,
+      plan,
       data: flowchartData,
       meta: {
         nodeCount: flowchartData.nodes.length,
@@ -115,7 +117,8 @@ router.post('/edit', async (req, res) => {
       `[edit] Processing instruction: "${instruction.slice(0, 100)}" on flowchart with ${sanitized.nodes.length} nodes`
     );
 
-    const updatedFlowchart = await editFlowchart(instruction.trim(), sanitized);
+    const result = await editFlowchart(instruction.trim(), sanitized);
+    const { plan, flowchart: updatedFlowchart } = result;
 
     console.log(
       `[edit] Success: ${updatedFlowchart.nodes.length} nodes, ${updatedFlowchart.edges.length} edges`
@@ -123,6 +126,7 @@ router.post('/edit', async (req, res) => {
 
     return res.json({
       success: true,
+      plan,
       data: updatedFlowchart,
       meta: {
         nodeCount: updatedFlowchart.nodes.length,

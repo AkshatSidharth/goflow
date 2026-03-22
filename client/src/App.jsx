@@ -10,6 +10,7 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentFlowchart, setCurrentFlowchart] = useState(null);
+  const [pendingFlowchart, setPendingFlowchart] = useState(null);
   const [detectedLanguage, setDetectedLanguage] = useState('EN');
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -113,51 +114,50 @@ export default function App() {
     });
   }, [setNodes]);
 
+  /** User confirms the proposed flowchart — apply it to the canvas */
+  const handleConfirm = useCallback(() => {
+    if (!pendingFlowchart) return;
+    applyFlowchart(pendingFlowchart);
+    setPendingFlowchart(null);
+    addMessage('assistant', 'Flowchart applied to the canvas.', 'system');
+  }, [pendingFlowchart, applyFlowchart, addMessage]);
+
+  /** User cancels the proposed flowchart */
+  const handleCancel = useCallback(() => {
+    setPendingFlowchart(null);
+    addMessage('assistant', 'Cancelled. The canvas was not changed.', 'system');
+  }, [addMessage]);
+
   const handleSend = useCallback(async (userInput) => {
     if (!userInput.trim() || isLoading) return;
 
     const lang = detectLanguage(userInput);
     setDetectedLanguage(lang);
 
+    // If there's a pending flowchart awaiting confirmation, cancel it silently
+    if (pendingFlowchart) {
+      setPendingFlowchart(null);
+    }
+
     addMessage('user', userInput);
     setIsLoading(true);
 
     try {
-      let newFlowchart;
+      let result; // { plan, data }
 
       if (currentFlowchart) {
-        addMessage('assistant', 'Updating your flowchart…', 'system');
-        newFlowchart = await editFlowchart(userInput, currentFlowchart);
-
-        setMessages((prev) => {
-          const filtered = prev.filter((m) => m.content !== 'Updating your flowchart…');
-          return [
-            ...filtered,
-            {
-              role: 'assistant',
-              content: `Updated! "${userInput.length > 60 ? userInput.slice(0, 60) + '…' : userInput}"`,
-              type: 'text',
-              timestamp: new Date(),
-            },
-          ];
-        });
+        addMessage('assistant', 'Thinking…', 'system');
+        result = await editFlowchart(userInput, currentFlowchart);
       } else {
-        newFlowchart = await generateFlowchart(userInput);
-
-        const nodeCount = newFlowchart.nodes.length;
-        const edgeCount = newFlowchart.edges.length;
-        const decisionCount = newFlowchart.nodes.filter((n) => n.type === 'decision').length;
-
-        let summary = `Generated flowchart with ${nodeCount} nodes and ${edgeCount} connections`;
-        if (decisionCount > 0) {
-          summary += `, including ${decisionCount} decision branch${decisionCount > 1 ? 'es' : ''}`;
-        }
-        summary += '.';
-
-        addMessage('assistant', summary);
+        result = await generateFlowchart(userInput);
       }
 
-      applyFlowchart(newFlowchart);
+      // Remove the "Thinking…" system message
+      setMessages((prev) => prev.filter((m) => m.content !== 'Thinking…'));
+
+      // Show the plan in chat and hold the flowchart for confirmation
+      setPendingFlowchart(result.data);
+      addMessage('assistant', result.plan || 'Here is the proposed flowchart. Confirm to apply it to the canvas.', 'plan');
     } catch (error) {
       console.error('[App] Error:', error.message);
       setMessages((prev) => prev.filter((m) => m.type !== 'system'));
@@ -165,7 +165,7 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, currentFlowchart, addMessage, applyFlowchart]);
+  }, [isLoading, currentFlowchart, pendingFlowchart, addMessage]);
 
   return (
     <ReactFlowProvider>
@@ -180,6 +180,9 @@ export default function App() {
             onSend={handleSend}
             isLoading={isLoading}
             hasFlowchart={!!currentFlowchart}
+            hasPending={!!pendingFlowchart}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
           />
         </div>
 
