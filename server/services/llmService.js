@@ -17,8 +17,46 @@ function getClient() {
 // Demo mode — returns pre-built flowcharts when no API key is configured
 // ---------------------------------------------------------------------------
 
+// Detect if text contains Japanese/CJK characters
+function isJapanese(text) {
+  return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(text);
+}
+
 const DEMO_FLOWCHARTS = {
-  banking: {
+  banking_en: {
+    plan: 'A 12-node banking operations flow. The customer selects a service and goes through KYC identity verification and document checks. Approval leads to transaction execution, notification, and record keeping — rejection routes to a separate end node.',
+    flowchart: {
+      nodes: [
+        { id: 'n1',  type: 'start',    text: 'Start' },
+        { id: 'n2',  type: 'process',  text: 'Customer Visits Branch or Accesses Online Portal' },
+        { id: 'n3',  type: 'process',  text: 'Select Service (Account / Deposit / Withdrawal / Transfer / Loan)' },
+        { id: 'n4',  type: 'process',  text: 'KYC Identity Verification' },
+        { id: 'n5',  type: 'decision', text: 'Identity Verified?' },
+        { id: 'n6',  type: 'process',  text: 'Submit and Verify Required Documents' },
+        { id: 'n7',  type: 'decision', text: 'Approved or Rejected?' },
+        { id: 'n8',  type: 'process',  text: 'Execute Transaction or Service' },
+        { id: 'n9',  type: 'process',  text: 'Send Completion Notification (SMS / Email)' },
+        { id: 'n10', type: 'process',  text: 'Record and Save Transaction' },
+        { id: 'n11', type: 'end',      text: 'End — Complete' },
+        { id: 'n12', type: 'end',      text: 'End — Rejected' },
+      ],
+      edges: [
+        { from: 'n1',  to: 'n2',  label: '' },
+        { from: 'n2',  to: 'n3',  label: '' },
+        { from: 'n3',  to: 'n4',  label: '' },
+        { from: 'n4',  to: 'n5',  label: '' },
+        { from: 'n5',  to: 'n6',  label: 'Yes' },
+        { from: 'n5',  to: 'n12', label: 'No' },
+        { from: 'n6',  to: 'n7',  label: '' },
+        { from: 'n7',  to: 'n8',  label: 'Approved' },
+        { from: 'n7',  to: 'n12', label: 'Rejected' },
+        { from: 'n8',  to: 'n9',  label: '' },
+        { from: 'n9',  to: 'n10', label: '' },
+        { from: 'n10', to: 'n11', label: '' },
+      ],
+    },
+  },
+  banking_ja: {
     plan: '銀行業務フロー（12ノード）: 顧客の来店・オンラインアクセスから始まり、サービス選択→KYC本人確認→書類確認→承認判断という流れで進みます。承認された場合は取引実行→完了通知→記録保存で終了、却下された場合は別の終了ノードに分岐します。',
     flowchart: {
       nodes: [
@@ -131,19 +169,27 @@ const DEMO_FLOWCHARTS = {
 
 function getDemoFlowchart(input) {
   const lower = input.toLowerCase();
-  // Banking — English and Japanese keywords
+  const jp = isJapanese(input);
+
   if (
     lower.includes('bank') || lower.includes('banking') || lower.includes('kyc') ||
     input.includes('銀行') || input.includes('口座') || input.includes('入金') ||
     input.includes('出金') || input.includes('送金') || input.includes('トランザクション') ||
     input.includes('本人確認') || input.includes('ローン申請')
   ) {
-    return DEMO_FLOWCHARTS.banking;
+    return jp ? DEMO_FLOWCHARTS.banking_ja : DEMO_FLOWCHARTS.banking_en;
   }
-  if (lower.includes('login') || lower.includes('retry') || lower.includes('再試行') || lower.includes('dubara') || lower.includes('sign in') || lower.includes('credential')) {
+  if (
+    lower.includes('login') || lower.includes('sign in') || lower.includes('credential') ||
+    lower.includes('retry') || input.includes('再試行') || input.includes('dubara') ||
+    input.includes('ログイン')
+  ) {
     return DEMO_FLOWCHARTS.login;
   }
-  if (lower.includes('payment') || lower.includes('pay') || lower.includes('支付') || lower.includes('checkout') || lower.includes('fail')) {
+  if (
+    lower.includes('payment') || lower.includes('pay') || lower.includes('checkout') ||
+    lower.includes('fail') || input.includes('支付') || input.includes('支払') || input.includes('決済')
+  ) {
     return DEMO_FLOWCHARTS.payment;
   }
   return DEMO_FLOWCHARTS.default;
