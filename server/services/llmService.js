@@ -433,7 +433,7 @@ export async function generateFlowchart(userInput) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const message = await client.chat.completions.create({
-        model: 'gpt-5.1',
+        model: 'gpt-4o',
         max_tokens: 4096,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
@@ -512,7 +512,7 @@ User instruction: ${instruction.trim()}
 Apply the requested changes and return the complete updated flowchart JSON.`;
 
   const message = await client.chat.completions.create({
-    model: 'gpt-5.1',
+    model: 'gpt-4o',
     max_tokens: 4096,
     messages: [
       { role: 'system', content: EDIT_SYSTEM_PROMPT },
@@ -572,7 +572,7 @@ export async function chat(userInput, history = []) {
   messages.push({ role: 'user', content: userInput.trim() });
 
   const response = await client.chat.completions.create({
-    model: 'gpt-5.1',
+    model: 'gpt-4o',
     max_tokens: 4096,
     messages,
   });
