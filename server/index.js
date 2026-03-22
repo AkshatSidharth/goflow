@@ -1,16 +1,11 @@
-import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 import express from 'express';
 import cors from 'cors';
-
-// Load .env relative to this file so it works regardless of CWD
-const __envDir = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: join(__envDir, '.env'), override: true });
-import { existsSync } from 'fs';
 import flowchartRouter from './routes/flowchart.js';
 
-const __dirname = __envDir;
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = process.env.PORT || 3001;
