@@ -181,7 +181,7 @@ export async function generateFlowchart(userInput) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const message = await client.messages.create({
-        model: 'claude-opus-4-5',
+        model: 'claude-opus-4-6',
         max_tokens: 4096,
         system: SYSTEM_PROMPT,
         messages: [
@@ -259,7 +259,7 @@ User instruction: ${instruction.trim()}
 Apply the requested changes and return the complete updated flowchart JSON.`;
 
   const message = await client.messages.create({
-    model: 'claude-opus-4-5',
+    model: 'claude-opus-4-6',
     max_tokens: 4096,
     system: EDIT_SYSTEM_PROMPT,
     messages: [
