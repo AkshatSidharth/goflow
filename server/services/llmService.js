@@ -18,6 +18,39 @@ function getClient() {
 // ---------------------------------------------------------------------------
 
 const DEMO_FLOWCHARTS = {
+  banking: {
+    plan: '銀行業務フロー（12ノード）: 顧客の来店・オンラインアクセスから始まり、サービス選択→KYC本人確認→書類確認→承認判断という流れで進みます。承認された場合は取引実行→完了通知→記録保存で終了、却下された場合は別の終了ノードに分岐します。',
+    flowchart: {
+      nodes: [
+        { id: 'n1',  type: 'start',    text: '開始' },
+        { id: 'n2',  type: 'process',  text: '顧客が来店またはオンラインアクセス' },
+        { id: 'n3',  type: 'process',  text: 'サービスの選択（口座開設・入出金・送金・ローン申請など）' },
+        { id: 'n4',  type: 'process',  text: '本人確認（KYC）プロセス' },
+        { id: 'n5',  type: 'decision', text: '本人確認成功？' },
+        { id: 'n6',  type: 'process',  text: '必要書類の提出・確認' },
+        { id: 'n7',  type: 'decision', text: '承認または却下？' },
+        { id: 'n8',  type: 'process',  text: '取引またはサービスの実行' },
+        { id: 'n9',  type: 'process',  text: '完了通知の送信（SMSまたはメール）' },
+        { id: 'n10', type: 'process',  text: 'トランザクションの記録・保存' },
+        { id: 'n11', type: 'end',      text: '終了 — 完了' },
+        { id: 'n12', type: 'end',      text: '終了 — 却下' },
+      ],
+      edges: [
+        { from: 'n1',  to: 'n2',  label: '' },
+        { from: 'n2',  to: 'n3',  label: '' },
+        { from: 'n3',  to: 'n4',  label: '' },
+        { from: 'n4',  to: 'n5',  label: '' },
+        { from: 'n5',  to: 'n6',  label: 'はい' },
+        { from: 'n5',  to: 'n12', label: 'いいえ' },
+        { from: 'n6',  to: 'n7',  label: '' },
+        { from: 'n7',  to: 'n8',  label: '承認' },
+        { from: 'n7',  to: 'n12', label: '却下' },
+        { from: 'n8',  to: 'n9',  label: '' },
+        { from: 'n9',  to: 'n10', label: '' },
+        { from: 'n10', to: 'n11', label: '' },
+      ],
+    },
+  },
   login: {
     plan: 'A login flow with 10 nodes and retry logic. Credentials are checked up to 3 times across 3 decision nodes — success leads to the dashboard, while 3 consecutive failures deny access.',
     flowchart: {
@@ -98,10 +131,19 @@ const DEMO_FLOWCHARTS = {
 
 function getDemoFlowchart(input) {
   const lower = input.toLowerCase();
-  if (lower.includes('login') || lower.includes('retry') || lower.includes('再試行') || lower.includes('dubara')) {
+  // Banking — English and Japanese keywords
+  if (
+    lower.includes('bank') || lower.includes('banking') || lower.includes('kyc') ||
+    input.includes('銀行') || input.includes('口座') || input.includes('入金') ||
+    input.includes('出金') || input.includes('送金') || input.includes('トランザクション') ||
+    input.includes('本人確認') || input.includes('ローン申請')
+  ) {
+    return DEMO_FLOWCHARTS.banking;
+  }
+  if (lower.includes('login') || lower.includes('retry') || lower.includes('再試行') || lower.includes('dubara') || lower.includes('sign in') || lower.includes('credential')) {
     return DEMO_FLOWCHARTS.login;
   }
-  if (lower.includes('payment') || lower.includes('pay') || lower.includes('支付') || lower.includes('fail')) {
+  if (lower.includes('payment') || lower.includes('pay') || lower.includes('支付') || lower.includes('checkout') || lower.includes('fail')) {
     return DEMO_FLOWCHARTS.payment;
   }
   return DEMO_FLOWCHARTS.default;
@@ -191,11 +233,15 @@ function isConversationalRequest(input) {
 }
 
 function getDemoTopic(texts) {
-  const combined = texts.join(' ').toLowerCase();
-  if (combined.includes('bank') || combined.includes('banking') || combined.includes('transaction') || combined.includes('atm')) return 'banking';
-  if (combined.includes('login') || combined.includes('credential') || combined.includes('sign in')) return 'login';
-  if (combined.includes('payment') || combined.includes('pay') || combined.includes('checkout')) return 'payment';
-  if (combined.includes('order') || combined.includes('inventory') || combined.includes('shipping')) return 'order';
+  const combined = texts.join(' ');
+  const lower = combined.toLowerCase();
+  if (
+    lower.includes('bank') || lower.includes('banking') || lower.includes('transaction') || lower.includes('atm') || lower.includes('kyc') ||
+    combined.includes('銀行') || combined.includes('口座') || combined.includes('入金') || combined.includes('出金') || combined.includes('送金') || combined.includes('本人確認')
+  ) return 'banking';
+  if (lower.includes('login') || lower.includes('credential') || lower.includes('sign in') || combined.includes('ログイン')) return 'login';
+  if (lower.includes('payment') || lower.includes('pay') || lower.includes('checkout') || combined.includes('支払') || combined.includes('決済')) return 'payment';
+  if (lower.includes('order') || lower.includes('inventory') || lower.includes('shipping') || combined.includes('注文') || combined.includes('配送')) return 'order';
   return 'default';
 }
 
