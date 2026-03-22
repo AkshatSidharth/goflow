@@ -9,12 +9,13 @@
   },
   "dependencies": {
     "@reactflow/core": "^11.11.4",
-    "reactflow": "^11.11.4",
+    "axios": "^1.7.2",
+    "dagre": "^0.8.5",
+    "html-to-image": "^1.11.11",
+    "jspdf": "^4.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "axios": "^1.7.2",
-    "html-to-image": "^1.11.11",
-    "dagre": "^0.8.5"
+    "reactflow": "^11.11.4"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

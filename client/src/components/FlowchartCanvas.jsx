@@ -5,16 +5,100 @@ import ReactFlow, {
   MiniMap,
   BackgroundVariant,
   useReactFlow,
+  BaseEdge,
+  EdgeLabelRenderer,
+  getSmoothStepPath,
+  addEdge,
 } from 'reactflow';
-import { toPng } from 'html-to-image';
+import { toPng, toJpeg, toSvg } from 'html-to-image';
 import StartEndNode from './nodes/StartEndNode.jsx';
 import ProcessNode from './nodes/ProcessNode.jsx';
 import DecisionNode from './nodes/DecisionNode.jsx';
+
+// ─── Custom deletable edge ────────────────────────────────────────────────────
+
+function DeletableEdge({
+  id, source, target,
+  sourceX, sourceY, targetX, targetY,
+  sourcePosition, targetPosition,
+  style, markerEnd, label, data,
+}) {
+  const [hovered, setHovered] = useState(false);
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
+    sourceX, sourceY, sourcePosition,
+    targetX, targetY, targetPosition,
+  });
+
+  const handleDelete = useCallback((e) => {
+    e.stopPropagation();
+    data?.onDelete?.(id, source, target);
+  }, [id, source, target, data]);
+
+  return (
+    <>
+      {/* Wider transparent hit area for hover */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={16}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{ cursor: 'pointer' }}
+      />
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+
+      <EdgeLabelRenderer>
+        {/* Edge label */}
+        {label && (
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              pointerEvents: 'none',
+            }}
+            className="bg-slate-800/80 text-gray-300 text-[10px] px-1.5 py-0.5 rounded border border-slate-600/60"
+          >
+            {label}
+          </div>
+        )}
+
+        {/* Delete button — shown on hover */}
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (label ? 16 : 0)}px)`,
+            pointerEvents: 'all',
+            opacity: hovered ? 1 : 0,
+            transition: 'opacity 150ms',
+          }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className="nodrag nopan"
+        >
+          <button
+            onClick={handleDelete}
+            title="Remove connection"
+            className="w-5 h-5 rounded-full bg-red-600/90 hover:bg-red-500 border border-red-400/60 flex items-center justify-center shadow-md transition-colors"
+          >
+            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
 
 const nodeTypes = {
   startEnd: StartEndNode,
   process: ProcessNode,
   decision: DecisionNode,
+};
+
+const edgeTypes = {
+  deletable: DeletableEdge,
 };
 
 function getMiniMapNodeColor(node) {
@@ -27,7 +111,8 @@ function getMiniMapNodeColor(node) {
   }
 }
 
-/** Add Node panel — shown when user clicks "+ Add Node" */
+// ─── Add Node panel ───────────────────────────────────────────────────────────
+
 function AddNodePanel({ onAdd, onClose }) {
   const [nodeType, setNodeType] = useState('process');
   const [label, setLabel] = useState('');
@@ -67,7 +152,6 @@ function AddNodePanel({ onAdd, onClose }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Node type selector */}
         <div>
           <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-1.5 font-medium">Type</p>
           <div className="grid grid-cols-2 gap-1.5">
@@ -89,7 +173,6 @@ function AddNodePanel({ onAdd, onClose }) {
           </div>
         </div>
 
-        {/* Label input */}
         <div>
           <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-1.5 font-medium">Label</p>
           <input
@@ -112,6 +195,82 @@ function AddNodePanel({ onAdd, onClose }) {
     </div>
   );
 }
+
+// ─── Export dropdown ──────────────────────────────────────────────────────────
+
+const EXPORT_FORMATS = [
+  { id: 'png', label: 'PNG', ext: 'png' },
+  { id: 'jpg', label: 'JPG', ext: 'jpg' },
+  { id: 'svg', label: 'SVG', ext: 'svg' },
+  { id: 'pdf', label: 'PDF', ext: 'pdf' },
+];
+
+function ExportDropdown({ onExport, isExporting, disabled }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  // Close on outside click
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
+        className="
+          flex items-center gap-1.5 px-3 py-1.5
+          bg-indigo-600 hover:bg-indigo-500
+          disabled:opacity-40 disabled:cursor-not-allowed
+          text-white text-xs font-medium
+          rounded-xl border border-indigo-500/60
+          shadow-lg shadow-indigo-900/30
+          transition-all duration-150
+        "
+      >
+        {isExporting ? (
+          <>
+            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Exporting…
+          </>
+        ) : (
+          <>
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export
+            <svg className="w-2.5 h-2.5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-28 bg-gray-900/95 backdrop-blur-md border border-gray-700/80 rounded-xl shadow-2xl overflow-hidden z-50">
+          {EXPORT_FORMATS.map((fmt) => (
+            <button
+              key={fmt.id}
+              onClick={() => { setOpen(false); onExport(fmt.id); }}
+              className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-indigo-600/30 hover:text-white transition-colors flex items-center gap-2"
+            >
+              <span className="text-[10px] font-bold text-indigo-400 w-7">{fmt.label}</span>
+              <span className="text-gray-500">.{fmt.ext}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Canvas toolbar ───────────────────────────────────────────────────────────
 
 function CanvasToolbar({ nodeCount, edgeCount, onExport, isExporting, detectedLanguage, onAddNodeClick, showAddPanel }) {
   return (
@@ -157,39 +316,18 @@ function CanvasToolbar({ nodeCount, edgeCount, onExport, isExporting, detectedLa
           Add Node
         </button>
 
-        {/* Export button */}
-        <button
-          onClick={onExport}
+        {/* Export dropdown */}
+        <ExportDropdown
+          onExport={onExport}
+          isExporting={isExporting}
           disabled={isExporting || nodeCount === 0}
-          data-tooltip="Export as PNG"
-          className="
-            flex items-center gap-1.5 px-3 py-1.5
-            bg-indigo-600 hover:bg-indigo-500
-            disabled:opacity-40 disabled:cursor-not-allowed
-            text-white text-xs font-medium
-            rounded-xl border border-indigo-500/60
-            shadow-lg shadow-indigo-900/30
-            transition-all duration-150
-          "
-        >
-          {isExporting ? (
-            <>
-              <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Exporting…
-            </>
-          ) : (
-            <>
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Export PNG
-            </>
-          )}
-        </button>
+        />
       </div>
     </div>
   );
 }
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
 
 function EmptyState() {
   return (
@@ -219,7 +357,7 @@ function EmptyState() {
             { icon: '◇', label: 'Decision branches', color: 'text-amber-400' },
             { icon: '○', label: 'Start / End ovals',  color: 'text-indigo-400' },
             { icon: '□', label: 'Process steps',      color: 'text-slate-300' },
-            { icon: '↺', label: 'Loop detection',     color: 'text-orange-400' },
+            { icon: '↔', label: 'Connect nodes',      color: 'text-sky-400' },
           ].map(({ icon, label, color }) => (
             <div key={label} className="flex items-center gap-2 bg-gray-800/40 border border-gray-700/40 rounded-xl px-3 py-2">
               <span className={`${color} font-bold text-base`}>{icon}</span>
@@ -229,12 +367,14 @@ function EmptyState() {
         </div>
 
         <p className="text-gray-600 text-xs">
-          Tip: double-click any node to rename it · select a node to delete it
+          Tip: drag from a node handle to connect · hover an edge to remove it
         </p>
       </div>
     </div>
   );
 }
+
+// ─── Main canvas component ────────────────────────────────────────────────────
 
 export default function FlowchartCanvas({
   nodes,
@@ -245,6 +385,8 @@ export default function FlowchartCanvas({
   onNodeLabelChange,
   onNodeDelete,
   onAddNode,
+  onConnect,
+  onEdgeDelete,
 }) {
   const reactFlowWrapper = useRef(null);
   const { fitView } = useReactFlow();
@@ -275,30 +417,83 @@ export default function FlowchartCanvas({
     [nodes, onNodeLabelChange, onNodeDelete]
   );
 
-  const handleExport = useCallback(async () => {
+  // Inject delete callback into each edge's data and force deletable type
+  const enrichedEdges = useMemo(() =>
+    edges.map((e) => ({
+      ...e,
+      type: 'deletable',
+      data: { ...e.data, onDelete: onEdgeDelete },
+    })),
+    [edges, onEdgeDelete]
+  );
+
+  // ─── Export ────────────────────────────────────────────────────────────────
+
+  const getExportTarget = () => {
+    const rfViewport = reactFlowWrapper.current?.querySelector('.react-flow__renderer');
+    return rfViewport || reactFlowWrapper.current;
+  };
+
+  const exportFilter = (node) => {
+    if (node.classList) {
+      return (
+        !node.classList.contains('react-flow__controls') &&
+        !node.classList.contains('react-flow__minimap') &&
+        !node.classList.contains('canvas-toolbar')
+      );
+    }
+    return true;
+  };
+
+  const downloadDataUrl = (dataUrl, filename) => {
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = dataUrl;
+    link.click();
+  };
+
+  const handleExport = useCallback(async (format) => {
     if (!reactFlowWrapper.current || isExporting) return;
     setIsExporting(true);
+    const ts = Date.now();
+
     try {
-      const rfViewport = reactFlowWrapper.current.querySelector('.react-flow__renderer');
-      const targetEl = rfViewport || reactFlowWrapper.current;
-      const dataUrl = await toPng(targetEl, {
+      const targetEl = getExportTarget();
+      const commonOpts = {
         backgroundColor: '#0f172a',
         pixelRatio: 2,
-        filter: (node) => {
-          if (node.classList) {
-            return (
-              !node.classList.contains('react-flow__controls') &&
-              !node.classList.contains('react-flow__minimap') &&
-              !node.classList.contains('canvas-toolbar')
-            );
-          }
-          return true;
-        },
-      });
-      const link = document.createElement('a');
-      link.download = `flowmind-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
+        filter: exportFilter,
+      };
+
+      if (format === 'png') {
+        const url = await toPng(targetEl, commonOpts);
+        downloadDataUrl(url, `flowmind-${ts}.png`);
+
+      } else if (format === 'jpg') {
+        const url = await toJpeg(targetEl, { ...commonOpts, quality: 0.95 });
+        downloadDataUrl(url, `flowmind-${ts}.jpg`);
+
+      } else if (format === 'svg') {
+        const url = await toSvg(targetEl, commonOpts);
+        downloadDataUrl(url, `flowmind-${ts}.svg`);
+
+      } else if (format === 'pdf') {
+        const pngUrl = await toPng(targetEl, commonOpts);
+        const img = new Image();
+        img.src = pngUrl;
+        await new Promise((res) => { img.onload = res; });
+        const w = img.naturalWidth / 2;
+        const h = img.naturalHeight / 2;
+        const { jsPDF } = await import('jspdf');
+        const pdf = new jsPDF({
+          orientation: w >= h ? 'landscape' : 'portrait',
+          unit: 'px',
+          format: [w, h],
+          hotfixes: ['px_scaling'],
+        });
+        pdf.addImage(pngUrl, 'PNG', 0, 0, w, h);
+        pdf.save(`flowmind-${ts}.pdf`);
+      }
     } catch (err) {
       console.error('[Export] Failed:', err);
       alert('Export failed. Please try again.');
@@ -312,7 +507,7 @@ export default function FlowchartCanvas({
   }, [onAddNode]);
 
   const defaultEdgeOptions = useMemo(() => ({
-    type: 'smoothstep',
+    type: 'deletable',
     style: { stroke: '#64748b', strokeWidth: 2 },
     markerEnd: { type: 'arrowclosed', color: '#64748b' },
   }), []);
@@ -344,10 +539,12 @@ export default function FlowchartCanvas({
 
       <ReactFlow
         nodes={enrichedNodes}
-        edges={edges}
+        edges={enrichedEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
         fitViewOptions={{ padding: 0.15 }}
@@ -356,6 +553,8 @@ export default function FlowchartCanvas({
         deleteKeyCode={null}
         className="bg-slate-950"
         proOptions={{ hideAttribution: true }}
+        connectionLineStyle={{ stroke: '#6366f1', strokeWidth: 2 }}
+        connectionLineType="smoothstep"
       >
         <Background
           variant={BackgroundVariant.Dots}

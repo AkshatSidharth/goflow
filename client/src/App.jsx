@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { ReactFlowProvider, useNodesState, useEdgesState } from 'reactflow';
+import { ReactFlowProvider, useNodesState, useEdgesState, addEdge } from 'reactflow';
 import ChatPanel from './components/ChatPanel.jsx';
 import FlowchartCanvas from './components/FlowchartCanvas.jsx';
 import { generateFlowchart, editFlowchart } from './services/api.js';
@@ -60,6 +60,36 @@ export default function App() {
       };
     });
   }, [setNodes, setEdges]);
+
+  /** Connect two nodes by dragging from one handle to another */
+  const handleConnect = useCallback((params) => {
+    const newEdge = {
+      ...params,
+      type: 'deletable',
+      style: { stroke: '#64748b', strokeWidth: 2 },
+      markerEnd: { type: 'arrowclosed', color: '#64748b' },
+    };
+    setEdges((eds) => addEdge(newEdge, eds));
+    setCurrentFlowchart((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        edges: [...prev.edges, { from: params.source, to: params.target, label: '' }],
+      };
+    });
+  }, [setEdges]);
+
+  /** Delete an edge by clicking its × button */
+  const handleEdgeDelete = useCallback((edgeId, source, target) => {
+    setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+    setCurrentFlowchart((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        edges: prev.edges.filter((e) => !(e.from === source && e.to === target)),
+      };
+    });
+  }, [setEdges]);
 
   /** Add a new node manually to the canvas */
   const handleAddNode = useCallback((nodeType, label) => {
@@ -164,6 +194,8 @@ export default function App() {
             onNodeLabelChange={handleNodeLabelChange}
             onNodeDelete={handleNodeDelete}
             onAddNode={handleAddNode}
+            onConnect={handleConnect}
+            onEdgeDelete={handleEdgeDelete}
           />
         </div>
       </div>
