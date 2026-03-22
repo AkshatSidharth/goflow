@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { SYSTEM_PROMPT, EDIT_SYSTEM_PROMPT } from '../prompts/systemPrompt.js';
+import { SYSTEM_PROMPT, EDIT_SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT } from '../prompts/systemPrompt.js';
 import { validateFlowchart, sanitizeFlowchart } from './validator.js';
 
 let openaiClient = null;
@@ -105,6 +105,108 @@ function getDemoFlowchart(input) {
     return DEMO_FLOWCHARTS.payment;
   }
   return DEMO_FLOWCHARTS.default;
+}
+
+const DEMO_STEPS = {
+  banking: `Here are the key steps in a banking transaction flow:
+
+1. **Customer Initiates Request** – Customer visits branch, ATM, or online portal.
+2. **Identity Verification** – System checks customer credentials (PIN, OTP, or biometrics).
+3. **Account Validation** – Verify account exists and is active.
+4. **Balance Check** – Confirm sufficient funds are available for the transaction.
+5. **Transaction Processing** – Debit or credit the appropriate accounts.
+6. **Fraud Detection Check** – Flag any suspicious or unusual activity.
+7. **Confirmation** – Generate receipt or confirmation message for the customer.
+8. **Record Keeping** – Update transaction logs and account statements.
+
+Would you like me to generate a flowchart based on these steps?`,
+
+  login: `Here are the steps in a user login flow:
+
+1. **Open Login Page** – User navigates to the login screen.
+2. **Enter Credentials** – User inputs username and password.
+3. **Validate Input** – Check fields are not empty/malformed.
+4. **Authenticate** – Verify credentials against the database.
+5. **Check Result** – Valid credentials grant access; invalid shows error.
+6. **Retry or Lock** – Allow limited retries before locking the account.
+7. **Redirect on Success** – Navigate user to the dashboard.
+8. **Create Session** – Establish an authenticated session token.
+
+Would you like me to generate a flowchart for this?`,
+
+  payment: `Here are the steps in a payment processing flow:
+
+1. **Customer Selects Items** – Items are added to the cart.
+2. **Proceed to Checkout** – Customer reviews the order total.
+3. **Enter Payment Details** – Input card number, CVV, and expiry date.
+4. **Submit to Payment Gateway** – Send payment request to the gateway.
+5. **Bank Authorization** – Bank approves or declines the charge.
+6. **Check Result** – If approved, complete the order; if declined, show error.
+7. **Retry Option** – Allow the customer to try a different payment method.
+8. **Send Confirmation** – Email or notify customer with order confirmation.
+
+Would you like me to generate a flowchart for this?`,
+
+  order: `Here are the steps in an order processing flow:
+
+1. **Customer Places Order** – Selects items and submits the order.
+2. **Order Received** – System logs the new order with a unique ID.
+3. **Inventory Check** – Verify that all items are in stock.
+4. **Payment Processing** – Charge customer for the order amount.
+5. **Payment Verification** – Confirm successful payment.
+6. **Order Fulfillment** – Pick, pack, and prepare items for shipping.
+7. **Dispatch** – Ship order with a tracking number.
+8. **Delivery Confirmation** – Mark order as delivered and notify customer.
+
+Would you like me to generate a flowchart for this?`,
+
+  default: `Here are the general steps in this workflow:
+
+1. **Start** – Initiate the process.
+2. **Gather Input** – Collect the required data or information.
+3. **Validate** – Check that the input meets requirements.
+4. **Process** – Execute the main logic or action.
+5. **Decision Point** – Evaluate if the result meets the success criteria.
+6. **Handle Success** – If yes, proceed with the success path.
+7. **Handle Failure** – If no, handle the error or exception.
+8. **Complete** – Finalize and record the outcome.
+
+Would you like me to generate a flowchart for this?`,
+};
+
+function isConversationalRequest(input) {
+  const lower = input.toLowerCase();
+  return (
+    lower.includes('step') ||
+    lower.includes('explain') ||
+    lower.includes('describe') ||
+    lower.includes('how does') ||
+    lower.includes('tell me') ||
+    lower.includes('walk me through') ||
+    lower.includes('what are') ||
+    lower.includes('list the') ||
+    lower.includes('show me the process') ||
+    lower.includes('break it down')
+  );
+}
+
+function getDemoTopic(texts) {
+  const combined = texts.join(' ').toLowerCase();
+  if (combined.includes('bank') || combined.includes('banking') || combined.includes('transaction') || combined.includes('atm')) return 'banking';
+  if (combined.includes('login') || combined.includes('credential') || combined.includes('sign in')) return 'login';
+  if (combined.includes('payment') || combined.includes('pay') || combined.includes('checkout')) return 'payment';
+  if (combined.includes('order') || combined.includes('inventory') || combined.includes('shipping')) return 'order';
+  return 'default';
+}
+
+function getDemoChat(input, history = []) {
+  if (isConversationalRequest(input)) {
+    const allTexts = [input, ...history.map((m) => m.content || '')];
+    const topic = getDemoTopic(allTexts);
+    return { type: 'text', message: DEMO_STEPS[topic] };
+  }
+  const demoResult = getDemoFlowchart(input);
+  return { type: 'flowchart', plan: demoResult.plan, data: demoResult.flowchart };
 }
 
 function getDemoEdit(instruction, currentFlowchart) {
@@ -298,4 +400,62 @@ Apply the requested changes and return the complete updated flowchart JSON.`;
   }
 
   return { plan, flowchart: validation.data };
+}
+
+/**
+ * Conversational chat — returns either a text response or a flowchart proposal.
+ * @param {string} userInput - User's message
+ * @param {Array} history - Previous messages [{role, content}]
+ * @returns {Promise<{type: "text", message: string} | {type: "flowchart", plan: string, data: Object}>}
+ */
+export async function chat(userInput, history = []) {
+  if (!userInput || typeof userInput !== 'string' || userInput.trim().length === 0) {
+    throw new Error('User input cannot be empty');
+  }
+
+  const client = getClient();
+
+  if (!client) {
+    console.log('[chat] Demo mode');
+    await new Promise((r) => setTimeout(r, 700));
+    return getDemoChat(userInput, history);
+  }
+
+  const messages = [{ role: 'system', content: CHAT_SYSTEM_PROMPT }];
+
+  // Include recent conversation history for context (last 8 messages)
+  const recentHistory = history.slice(-8);
+  for (const msg of recentHistory) {
+    if (msg.role === 'user' || msg.role === 'assistant') {
+      messages.push({ role: msg.role, content: String(msg.content) });
+    }
+  }
+  messages.push({ role: 'user', content: userInput.trim() });
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-5.1',
+    max_tokens: 4096,
+    messages,
+  });
+
+  const responseText = response.choices[0]?.message?.content;
+  if (!responseText) throw new Error('LLM returned empty content');
+
+  const rawData = extractJSON(responseText);
+
+  if (rawData.type === 'text') {
+    return { type: 'text', message: rawData.message || '' };
+  }
+
+  // type === 'flowchart'
+  const flowchartData = rawData.flowchart || rawData;
+  const plan = rawData.plan || '';
+  const sanitized = sanitizeFlowchart(flowchartData);
+  const validation = validateFlowchart(sanitized);
+
+  if (!validation.valid) {
+    throw new Error(`Flowchart validation failed: ${validation.errors.join('; ')}`);
+  }
+
+  return { type: 'flowchart', plan, data: validation.data };
 }

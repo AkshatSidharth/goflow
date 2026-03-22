@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { generateFlowchart, editFlowchart } from '../services/llmService.js';
+import { generateFlowchart, editFlowchart, chat } from '../services/llmService.js';
 import { validateFlowchart, sanitizeFlowchart } from '../services/validator.js';
 
 const router = Router();
@@ -154,6 +154,40 @@ router.post('/edit', async (req, res) => {
       success: false,
       error: userMessage,
     });
+  }
+});
+
+/**
+ * POST /api/chat
+ * Conversational chat — returns either a text response or a flowchart proposal.
+ *
+ * Request body: { message: string, history?: Array<{role, content}> }
+ * Response: { success: true, type: "text", message: string }
+ *         | { success: true, type: "flowchart", plan: string, data: FlowchartJSON }
+ */
+router.post('/chat', async (req, res) => {
+  try {
+    const { message, history = [] } = req.body;
+
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Request body must include a non-empty "message" string' });
+    }
+
+    const result = await chat(message.trim(), Array.isArray(history) ? history : []);
+
+    if (result.type === 'text') {
+      return res.json({ success: true, type: 'text', message: result.message });
+    }
+
+    return res.json({
+      success: true,
+      type: 'flowchart',
+      plan: result.plan,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error('[chat] Error:', error.message);
+    return res.status(500).json({ success: false, error: error.message || 'Chat failed. Please try again.' });
   }
 });
 

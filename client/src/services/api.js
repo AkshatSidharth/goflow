@@ -58,6 +58,24 @@ export async function editFlowchart(instruction, currentFlowchart) {
 }
 
 /**
+ * Conversational chat — returns a text reply or a flowchart proposal.
+ * @param {string} message - User's message
+ * @param {Array} history - Previous messages [{role, content}]
+ * @returns {Promise<{type: "text", message: string} | {type: "flowchart", plan: string, data: Object}>}
+ */
+export async function chatMessage(message, history = []) {
+  const response = await api.post('/chat', { message, history });
+  if (!response.data.success) {
+    throw new Error(response.data.error || 'Chat failed');
+  }
+  const { type } = response.data;
+  if (type === 'text') {
+    return { type: 'text', message: response.data.message };
+  }
+  return { type: 'flowchart', plan: response.data.plan || '', data: response.data.data };
+}
+
+/**
  * Health check for the backend server.
  * @returns {Promise<Object>}
  */

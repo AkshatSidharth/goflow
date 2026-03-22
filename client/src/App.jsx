@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { ReactFlowProvider, useNodesState, useEdgesState, addEdge } from 'reactflow';
 import ChatPanel from './components/ChatPanel.jsx';
 import FlowchartCanvas from './components/FlowchartCanvas.jsx';
-import { generateFlowchart, editFlowchart } from './services/api.js';
+import { chatMessage, editFlowchart } from './services/api.js';
 import { convertAndLayout } from './utils/layoutEngine.js';
 import { detectLanguage } from './utils/validator.js';
 
@@ -143,21 +143,24 @@ export default function App() {
     setIsLoading(true);
 
     try {
-      let result; // { plan, data }
-
       if (currentFlowchart) {
+        // Edit mode: modify existing canvas flowchart
         addMessage('assistant', 'Thinking…', 'system');
-        result = await editFlowchart(userInput, currentFlowchart);
+        const result = await editFlowchart(userInput, currentFlowchart);
+        setMessages((prev) => prev.filter((m) => m.content !== 'Thinking…'));
+        setPendingFlowchart(result.data);
+        addMessage('assistant', result.plan || 'Here is the updated flowchart.', 'plan');
       } else {
-        result = await generateFlowchart(userInput);
+        // Chat mode: can return text response OR a flowchart proposal
+        const historySnapshot = messages.map((m) => ({ role: m.role, content: m.content }));
+        const result = await chatMessage(userInput, historySnapshot);
+        if (result.type === 'text') {
+          addMessage('assistant', result.message, 'text');
+        } else {
+          setPendingFlowchart(result.data);
+          addMessage('assistant', result.plan || 'Here is the proposed flowchart. Confirm to apply it to the canvas.', 'plan');
+        }
       }
-
-      // Remove the "Thinking…" system message
-      setMessages((prev) => prev.filter((m) => m.content !== 'Thinking…'));
-
-      // Show the plan in chat and hold the flowchart for confirmation
-      setPendingFlowchart(result.data);
-      addMessage('assistant', result.plan || 'Here is the proposed flowchart. Confirm to apply it to the canvas.', 'plan');
     } catch (error) {
       console.error('[App] Error:', error.message);
       setMessages((prev) => prev.filter((m) => m.type !== 'system'));
