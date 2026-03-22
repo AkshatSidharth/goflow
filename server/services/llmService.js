@@ -1,16 +1,16 @@
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { SYSTEM_PROMPT, EDIT_SYSTEM_PROMPT } from '../prompts/systemPrompt.js';
 import { validateFlowchart, sanitizeFlowchart } from './validator.js';
 
-let anthropicClient = null;
+let openaiClient = null;
 
 function getClient() {
-  if (!anthropicClient) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!openaiClient) {
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) return null;
-    anthropicClient = new Anthropic({ apiKey });
+    openaiClient = new OpenAI({ apiKey });
   }
-  return anthropicClient;
+  return openaiClient;
 }
 
 // ---------------------------------------------------------------------------
@@ -180,19 +180,16 @@ export async function generateFlowchart(userInput) {
   // Retry up to 2 times on validation failure
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const message = await client.messages.create({
-        model: 'claude-opus-4-6',
+      const message = await client.chat.completions.create({
+        model: 'gpt-5.1',
         max_tokens: 4096,
-        system: SYSTEM_PROMPT,
         messages: [
-          {
-            role: 'user',
-            content: userInput.trim(),
-          },
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userInput.trim() },
         ],
       });
 
-      const responseText = message.content[0]?.text;
+      const responseText = message.choices[0]?.message?.content;
       if (!responseText) {
         throw new Error('LLM returned empty content');
       }
@@ -258,19 +255,16 @@ User instruction: ${instruction.trim()}
 
 Apply the requested changes and return the complete updated flowchart JSON.`;
 
-  const message = await client.messages.create({
-    model: 'claude-opus-4-6',
+  const message = await client.chat.completions.create({
+    model: 'gpt-5.1',
     max_tokens: 4096,
-    system: EDIT_SYSTEM_PROMPT,
     messages: [
-      {
-        role: 'user',
-        content: userMessage,
-      },
+      { role: 'system', content: EDIT_SYSTEM_PROMPT },
+      { role: 'user', content: userMessage },
     ],
   });
 
-  const responseText = message.content[0]?.text;
+  const responseText = message.choices[0]?.message?.content;
   if (!responseText) {
     throw new Error('LLM returned empty content');
   }

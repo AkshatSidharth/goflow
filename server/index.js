@@ -66,7 +66,7 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 FlowMind API running on http://localhost:${PORT}`);
   console.log(`   Health check: http://localhost:${PORT}/api/health`);
-  console.log(`   API Key: ${process.env.ANTHROPIC_API_KEY ? '✓ configured' : '✗ not set (set ANTHROPIC_API_KEY)'}`);
+  console.log(`   API Key: ${process.env.OPENAI_API_KEY ? '✓ configured' : '✗ not set (set OPENAI_API_KEY)'}\n`);
   console.log('');
 });
 
