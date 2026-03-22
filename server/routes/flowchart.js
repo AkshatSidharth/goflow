@@ -187,7 +187,9 @@ router.post('/chat', async (req, res) => {
     });
   } catch (error) {
     console.error('[chat] Error:', error.message);
-    return res.status(500).json({ success: false, error: error.message || 'Chat failed. Please try again.' });
+    console.error('[chat] Full error:', JSON.stringify(error?.error || error?.cause || {}, null, 2));
+    const userMsg = error?.error?.message || error?.cause?.message || error.message || 'Chat failed. Please try again.';
+    return res.status(500).json({ success: false, error: userMsg });
   }
 });
 
