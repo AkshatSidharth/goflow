@@ -291,14 +291,61 @@ function getDemoTopic(texts) {
   return 'default';
 }
 
+const DEMO_CLARIFY = `I'd love to help you build a flowchart! To make it accurate and useful, could you tell me:
+
+1. **What domain or process** do you have in mind? (e.g., banking transaction, user login, e-commerce order, employee onboarding)
+2. **Who are the key actors?** (e.g., customer, system, admin, employee)
+3. **Any specific steps, decisions, or edge cases** you want included?
+
+Feel free to describe it in one sentence — I'll take care of the rest.`;
+
+function isAffirmative(input) {
+  const lower = input.toLowerCase().trim();
+  const triggers = ['yes', 'ok', 'sure', 'go ahead', 'generate', 'create it', 'make it', 'proceed', 'do it', "let's go", 'yep', 'yeah', 'show me', 'sounds good'];
+  return triggers.some((t) => lower.includes(t)) && lower.length < 50;
+}
+
+function hasTopicKeywords(input) {
+  const lower = input.toLowerCase();
+  return (
+    lower.includes('bank') || lower.includes('login') || lower.includes('pay') ||
+    lower.includes('order') || lower.includes('kyc') || lower.includes('flow') ||
+    lower.includes('process') || lower.includes('onboard') || lower.includes('deploy') ||
+    lower.includes('checkout') || lower.includes('register') || lower.includes('sign') ||
+    isJapanese(input)
+  );
+}
+
 function getDemoChat(input, history = []) {
+  const allHistoryTexts = history.map((m) => m.content || '');
+
+  // Affirmative follow-up: "yes", "ok generate it" etc. — look at history for topic
+  if (isAffirmative(input) && history.length > 0) {
+    const topic = getDemoTopic(allHistoryTexts);
+    if (topic !== 'default') {
+      const historyBlob = allHistoryTexts.join(' ');
+      const demoResult =
+        topic === 'banking'
+          ? isJapanese(historyBlob) ? DEMO_FLOWCHARTS.banking_ja : DEMO_FLOWCHARTS.banking_en
+          : DEMO_FLOWCHARTS[topic];
+      return { type: 'flowchart', plan: demoResult.plan, data: demoResult.flowchart };
+    }
+  }
+
+  // Conversational / step-by-step request
   if (isConversationalRequest(input)) {
-    const allTexts = [input, ...history.map((m) => m.content || '')];
-    const topic = getDemoTopic(allTexts);
+    const topic = getDemoTopic([input, ...allHistoryTexts]);
     return { type: 'text', message: DEMO_STEPS[topic] };
   }
-  const demoResult = getDemoFlowchart(input);
-  return { type: 'flowchart', plan: demoResult.plan, data: demoResult.flowchart };
+
+  // Has enough keywords to generate a flowchart
+  if (hasTopicKeywords(input) || getDemoTopic([input, ...allHistoryTexts]) !== 'default') {
+    const demoResult = getDemoFlowchart([input, ...allHistoryTexts].join(' '));
+    return { type: 'flowchart', plan: demoResult.plan, data: demoResult.flowchart };
+  }
+
+  // Vague prompt with no domain context — ask for clarification
+  return { type: 'text', message: DEMO_CLARIFY };
 }
 
 function getDemoEdit(instruction, currentFlowchart) {

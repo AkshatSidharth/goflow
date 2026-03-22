@@ -152,7 +152,13 @@ export default function App() {
         addMessage('assistant', result.plan || 'Here is the updated flowchart.', 'plan');
       } else {
         // Chat mode: can return text response OR a flowchart proposal
-        const historySnapshot = messages.map((m) => ({ role: m.role, content: m.content }));
+        // Strip system/noise messages; annotate plan messages so LLM knows they were proposals
+        const historySnapshot = messages
+          .filter((m) => m.type !== 'system' && m.content && m.content !== 'Thinking…')
+          .map((m) => ({
+            role: m.role,
+            content: m.type === 'plan' ? `[Proposed flowchart]: ${m.content}` : m.content,
+          }));
         const result = await chatMessage(userInput, historySnapshot);
         if (result.type === 'text') {
           addMessage('assistant', result.message, 'text');
@@ -168,7 +174,7 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, currentFlowchart, pendingFlowchart, addMessage]);
+  }, [isLoading, currentFlowchart, pendingFlowchart, messages, addMessage]);
 
   return (
     <ReactFlowProvider>
