@@ -6,7 +6,7 @@ import cors from 'cors';
 
 // Load .env relative to this file so it works regardless of CWD
 const __envDir = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: join(__envDir, '.env') });
+dotenv.config({ path: join(__envDir, '.env'), override: true });
 import { existsSync } from 'fs';
 import flowchartRouter from './routes/flowchart.js';
 
