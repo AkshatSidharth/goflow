@@ -35,14 +35,10 @@ const SAMPLE_PROMPTS = [
   },
 ];
 
-/** Formats a timestamp to HH:MM */
 function formatTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-/**
- * Individual chat message bubble.
- */
 function MessageBubble({ message }) {
   const isUser = message.role === 'user';
   const isError = message.type === 'error';
@@ -50,8 +46,8 @@ function MessageBubble({ message }) {
 
   if (isSystem) {
     return (
-      <div className="flex justify-center my-2">
-        <span className="text-gray-500 text-xs bg-gray-800/60 px-3 py-1 rounded-full">
+      <div className="flex justify-center my-1">
+        <span className="text-gray-500 text-[11px] bg-gray-800/50 px-3 py-1 rounded-full border border-gray-700/50">
           {message.content}
         </span>
       </div>
@@ -59,21 +55,22 @@ function MessageBubble({ message }) {
   }
 
   return (
-    <div
-      className={`flex gap-2.5 animate-fade-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-    >
+    <div className={`flex gap-2.5 animate-fade-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       {/* Avatar */}
       <div
         className={`
-          flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mt-0.5
-          ${isUser ? 'bg-indigo-600 text-white' : isError ? 'bg-red-900 text-red-300' : 'bg-gray-700 text-gray-300'}
+          flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5
+          ${isUser
+            ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-900/40'
+            : isError
+            ? 'bg-red-900/80 text-red-300 border border-red-700'
+            : 'bg-gray-700/80 text-gray-300 border border-gray-600'}
         `}
       >
         {isUser ? 'U' : isError ? '!' : 'AI'}
       </div>
 
-      <div className={`flex flex-col gap-1 max-w-[85%] ${isUser ? 'items-end' : 'items-start'}`}>
-        {/* Message bubble */}
+      <div className={`flex flex-col gap-1 max-w-[84%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div
           className={`
             px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed
@@ -81,7 +78,7 @@ function MessageBubble({ message }) {
               ? 'message-user text-white rounded-tr-sm'
               : isError
               ? 'message-error text-red-200 rounded-tl-sm'
-              : 'message-assistant text-gray-200 rounded-tl-sm'}
+              : 'message-assistant text-gray-100 rounded-tl-sm'}
           `}
         >
           {isError && (
@@ -94,58 +91,54 @@ function MessageBubble({ message }) {
           )}
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
         </div>
-
-        {/* Timestamp */}
         {message.timestamp && (
-          <span className="text-gray-600 text-[10px] px-1">
-            {formatTime(message.timestamp)}
-          </span>
+          <span className="text-gray-600 text-[10px] px-1">{formatTime(message.timestamp)}</span>
         )}
       </div>
     </div>
   );
 }
 
-/**
- * Loading indicator shown while AI is processing.
- */
 function LoadingBubble() {
   return (
     <div className="flex gap-2.5 animate-fade-in">
-      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300 mt-0.5">
+      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gray-700/80 border border-gray-600 flex items-center justify-center text-[10px] font-bold text-gray-300 mt-0.5">
         AI
       </div>
       <div className="message-assistant px-4 py-3 rounded-2xl rounded-tl-sm">
-        <div className="flex items-center gap-1.5">
-          <span className="loading-dot w-2 h-2 rounded-full bg-indigo-400 inline-block" />
-          <span className="loading-dot w-2 h-2 rounded-full bg-indigo-400 inline-block" />
-          <span className="loading-dot w-2 h-2 rounded-full bg-indigo-400 inline-block" />
-          <span className="text-gray-500 text-xs ml-1">Generating flowchart…</span>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            <span className="loading-dot w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block" />
+            <span className="loading-dot w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block" />
+            <span className="loading-dot w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block" />
+          </div>
+          <span className="text-gray-400 text-xs">Thinking…</span>
         </div>
       </div>
     </div>
   );
 }
 
-/**
- * Sample prompts section shown when chat is empty.
- */
 function SamplePrompts({ onSelect }) {
   const [activeCategory, setActiveCategory] = useState(0);
 
   return (
-    <div className="space-y-3 p-4">
-      <div className="text-center">
-        <h2 className="text-gray-300 font-semibold text-sm mb-0.5">
-          Try a sample prompt
-        </h2>
-        <p className="text-gray-500 text-xs">
-          Click to use, or type your own below
+    <div className="flex flex-col h-full justify-center px-4 py-6 space-y-5">
+      {/* Hero */}
+      <div className="text-center space-y-1">
+        <div className="w-10 h-10 mx-auto rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-900/40 mb-3">
+          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+          </svg>
+        </div>
+        <h2 className="text-gray-200 font-semibold text-sm">Describe any process</h2>
+        <p className="text-gray-500 text-xs leading-relaxed">
+          Type in plain language — FlowMind will turn it into a flowchart
         </p>
       </div>
 
       {/* Language tabs */}
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
         {SAMPLE_PROMPTS.map((cat, idx) => (
           <button
             key={cat.category}
@@ -154,8 +147,8 @@ function SamplePrompts({ onSelect }) {
               flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
               transition-all duration-150
               ${activeCategory === idx
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-300'}
+                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-900/50'
+                : 'bg-gray-800/80 text-gray-400 hover:bg-gray-700/80 hover:text-gray-300 border border-gray-700/60'}
             `}
           >
             <span>{cat.flag}</span>
@@ -164,19 +157,18 @@ function SamplePrompts({ onSelect }) {
         ))}
       </div>
 
-      {/* Prompts for active category */}
+      {/* Prompts */}
       <div className="space-y-2">
         {SAMPLE_PROMPTS[activeCategory].prompts.map((prompt, idx) => (
           <button
             key={idx}
             onClick={() => onSelect(prompt)}
             className="
-              w-full text-left text-xs text-gray-400 bg-gray-800/70 hover:bg-gray-700/80
-              border border-gray-700 hover:border-indigo-600/50
-              rounded-lg px-3 py-2.5
+              w-full text-left text-xs text-gray-400 bg-gray-800/50 hover:bg-gray-700/60
+              border border-gray-700/60 hover:border-indigo-500/40
+              rounded-xl px-3.5 py-2.5
               transition-all duration-150
-              leading-relaxed
-              line-clamp-3
+              leading-relaxed line-clamp-3
             "
           >
             {prompt}
@@ -187,20 +179,15 @@ function SamplePrompts({ onSelect }) {
   );
 }
 
-/**
- * Main ChatPanel component.
- */
 export default function ChatPanel({ messages, onSend, isLoading, hasFlowchart }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  // Auto-focus textarea on mount
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
@@ -210,7 +197,6 @@ export default function ChatPanel({ messages, onSend, isLoading, hasFlowchart })
     if (!trimmed || isLoading) return;
     onSend(trimmed);
     setInput('');
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -230,7 +216,6 @@ export default function ChatPanel({ messages, onSend, isLoading, hasFlowchart })
 
   const handleTextareaInput = useCallback((e) => {
     setInput(e.target.value);
-    // Auto-resize
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 150)}px`;
@@ -239,27 +224,29 @@ export default function ChatPanel({ messages, onSend, isLoading, hasFlowchart })
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="flex flex-col h-full bg-gray-900">
+    <div className="flex flex-col h-full" style={{ background: 'linear-gradient(180deg, #0f1117 0%, #111827 100%)' }}>
       {/* ─── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+      <div className="flex-shrink-0 px-4 py-3.5 border-b border-gray-800/80 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-900/50">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
           </div>
           <div>
-            <h1 className="text-white font-bold text-sm leading-tight">FlowMind</h1>
+            <h1 className="text-white font-semibold text-sm leading-tight tracking-tight">FlowMind</h1>
             <p className="text-gray-500 text-[10px] leading-tight">AI Flowchart Generator</p>
           </div>
         </div>
 
-        {/* Status indicator */}
-        <div className="flex items-center gap-1.5">
+        {/* Status pill */}
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium border transition-all duration-300 ${
+          isLoading
+            ? 'bg-amber-950/50 border-amber-800/50 text-amber-400'
+            : 'bg-emerald-950/50 border-emerald-800/50 text-emerald-400'
+        }`}>
           <div className={`w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
-          <span className="text-gray-500 text-[10px]">
-            {isLoading ? 'Generating…' : 'Ready'}
-          </span>
+          {isLoading ? 'Thinking…' : 'Ready'}
         </div>
       </div>
 
@@ -276,37 +263,27 @@ export default function ChatPanel({ messages, onSend, isLoading, hasFlowchart })
             <div ref={messagesEndRef} />
           </div>
         )}
-
-        {hasMessages && (
-          <div className="px-4 py-2">
-            {isLoading && (
-              <div className="space-y-4">
-                <LoadingBubble />
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
       </div>
 
-      {/* ─── Hint when flowchart exists ──────────────────────────────────── */}
+      {/* ─── Edit hint ──────────────────────────────────────────────────── */}
       {hasFlowchart && !isLoading && (
         <div className="flex-shrink-0 mx-4 mb-2">
-          <div className="bg-indigo-950/60 border border-indigo-800/40 rounded-lg px-3 py-2 text-xs text-indigo-300/80 flex items-center gap-2">
-            <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+          <div className="bg-indigo-950/40 border border-indigo-800/30 rounded-xl px-3 py-2 text-xs text-indigo-300/70 flex items-center gap-2">
+            <svg className="w-3 h-3 flex-shrink-0 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
             </svg>
-            You can modify the flowchart — just describe your changes
+            Describe changes to modify the flowchart
           </div>
         </div>
       )}
 
       {/* ─── Input area ─────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-t border-gray-800 px-4 py-3">
+      <div className="flex-shrink-0 border-t border-gray-800/80 px-4 py-3.5">
         <div className={`
-          flex items-end gap-2 bg-gray-800 border rounded-xl px-3 py-2
-          transition-all duration-150
-          ${isLoading ? 'border-gray-700 opacity-60' : 'border-gray-700 focus-within:border-indigo-600 focus-within:shadow-lg focus-within:shadow-indigo-900/20'}
+          flex items-end gap-2.5 rounded-2xl px-3.5 py-2.5 border transition-all duration-200
+          ${isLoading
+            ? 'bg-gray-800/40 border-gray-700/50 opacity-60'
+            : 'bg-gray-800/60 border-gray-700/60 focus-within:border-indigo-500/60 focus-within:bg-gray-800/80 focus-within:shadow-lg focus-within:shadow-indigo-900/20'}
         `}>
           <textarea
             ref={textareaRef}
@@ -315,19 +292,15 @@ export default function ChatPanel({ messages, onSend, isLoading, hasFlowchart })
             onKeyDown={handleKeyDown}
             disabled={isLoading}
             rows={1}
-            placeholder={
-              hasFlowchart
-                ? 'Describe changes to your flowchart…'
-                : 'Describe a process or workflow…'
-            }
+            placeholder={hasFlowchart ? 'Describe changes to your flowchart…' : 'Describe a process or workflow…'}
             className="
               flex-1 bg-transparent text-gray-200 text-sm
               placeholder-gray-600
               resize-none outline-none border-none
-              leading-relaxed py-1
+              leading-relaxed py-0.5
               disabled:cursor-not-allowed
             "
-            style={{ minHeight: '36px', maxHeight: '150px' }}
+            style={{ minHeight: '32px', maxHeight: '150px' }}
           />
 
           <button
@@ -335,12 +308,12 @@ export default function ChatPanel({ messages, onSend, isLoading, hasFlowchart })
             disabled={!input.trim() || isLoading}
             className="
               flex-shrink-0 mb-0.5
-              w-8 h-8 rounded-lg
+              w-8 h-8 rounded-xl
               flex items-center justify-center
-              bg-indigo-600 hover:bg-indigo-500
-              disabled:opacity-40 disabled:cursor-not-allowed
+              bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700
+              disabled:opacity-30 disabled:cursor-not-allowed
               transition-all duration-150
-              shadow-sm
+              shadow-sm shadow-indigo-900/50
             "
             aria-label="Send message"
           >
@@ -354,8 +327,8 @@ export default function ChatPanel({ messages, onSend, isLoading, hasFlowchart })
           </button>
         </div>
 
-        <p className="text-gray-600 text-[10px] text-center mt-2">
-          Enter to send • Shift+Enter for new line
+        <p className="text-gray-700 text-[10px] text-center mt-2">
+          Enter to send · Shift+Enter for new line
         </p>
       </div>
     </div>

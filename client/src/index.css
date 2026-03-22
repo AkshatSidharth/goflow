@@ -186,17 +186,19 @@ html, body, #root {
 /* ─── Chat panel message styles ──────────────────────────────────────────────── */
 
 .message-user {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
 }
 
 .message-assistant {
-  background-color: #1e293b;
-  border: 1px solid #334155;
+  background-color: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  backdrop-filter: blur(8px);
 }
 
 .message-error {
-  background-color: #450a0a;
-  border: 1px solid #991b1b;
+  background-color: rgba(69, 10, 10, 0.8);
+  border: 1px solid rgba(153, 27, 27, 0.7);
 }
 
 /* ─── Textarea auto-resize ────────────────────────────────────────────────────── */

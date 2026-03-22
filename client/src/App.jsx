@@ -6,23 +6,15 @@ import { generateFlowchart, editFlowchart } from './services/api.js';
 import { convertAndLayout } from './utils/layoutEngine.js';
 import { detectLanguage } from './utils/validator.js';
 
-/**
- * Root application component.
- * Manages global state: messages, flowchart data, loading state.
- */
 export default function App() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentFlowchart, setCurrentFlowchart] = useState(null); // Raw API JSON
+  const [currentFlowchart, setCurrentFlowchart] = useState(null);
   const [detectedLanguage, setDetectedLanguage] = useState('EN');
 
-  // React Flow state
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  /**
-   * Applies new flowchart data: converts to React Flow format and updates state.
-   */
   const applyFlowchart = useCallback((flowchartData) => {
     setCurrentFlowchart(flowchartData);
     const { nodes: rfNodes, edges: rfEdges } = convertAndLayout(flowchartData);
@@ -30,34 +22,73 @@ export default function App() {
     setEdges(rfEdges);
   }, [setNodes, setEdges]);
 
-  /**
-   * Adds a message to the chat history.
-   */
   const addMessage = useCallback((role, content, type = 'text') => {
     setMessages((prev) => [
       ...prev,
-      {
-        role,
-        content,
-        type,
-        timestamp: new Date(),
-      },
+      { role, content, type, timestamp: new Date() },
     ]);
   }, []);
 
-  /**
-   * Handles sending a message from the chat panel.
-   * If a flowchart already exists, treats it as an edit request.
-   * Otherwise, generates a new flowchart.
-   */
+  /** Rename a node label — syncs React Flow state + raw flowchart JSON */
+  const handleNodeLabelChange = useCallback((nodeId, newLabel) => {
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === nodeId ? { ...n, data: { ...n.data, label: newLabel } } : n
+      )
+    );
+    setCurrentFlowchart((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        nodes: prev.nodes.map((n) =>
+          n.id === nodeId ? { ...n, text: newLabel } : n
+        ),
+      };
+    });
+  }, [setNodes]);
+
+  /** Delete a node and its connected edges */
+  const handleNodeDelete = useCallback((nodeId) => {
+    setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+    setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+    setCurrentFlowchart((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        nodes: prev.nodes.filter((n) => n.id !== nodeId),
+        edges: prev.edges.filter((e) => e.from !== nodeId && e.to !== nodeId),
+      };
+    });
+  }, [setNodes, setEdges]);
+
+  /** Add a new node manually to the canvas */
+  const handleAddNode = useCallback((nodeType, label) => {
+    const newId = `manual-${Date.now()}`;
+    const rfType =
+      nodeType === 'decision' ? 'decision'
+      : nodeType === 'start' || nodeType === 'end' ? 'startEnd'
+      : 'process';
+
+    const newRfNode = {
+      id: newId,
+      type: rfType,
+      position: { x: 280 + Math.random() * 120, y: 240 + Math.random() * 120 },
+      data: { label, nodeType },
+    };
+    setNodes((nds) => [...nds, newRfNode]);
+    setCurrentFlowchart((prev) => {
+      const newApiNode = { id: newId, type: nodeType, text: label };
+      if (!prev) return { nodes: [newApiNode], edges: [] };
+      return { ...prev, nodes: [...prev.nodes, newApiNode] };
+    });
+  }, [setNodes]);
+
   const handleSend = useCallback(async (userInput) => {
     if (!userInput.trim() || isLoading) return;
 
-    // Detect language for the badge
     const lang = detectLanguage(userInput);
     setDetectedLanguage(lang);
 
-    // Add user message to chat
     addMessage('user', userInput);
     setIsLoading(true);
 
@@ -65,25 +96,22 @@ export default function App() {
       let newFlowchart;
 
       if (currentFlowchart) {
-        // Edit mode: send current flowchart + instruction
         addMessage('assistant', 'Updating your flowchart…', 'system');
         newFlowchart = await editFlowchart(userInput, currentFlowchart);
 
-        // Remove the "updating" system message and replace with success
         setMessages((prev) => {
           const filtered = prev.filter((m) => m.content !== 'Updating your flowchart…');
           return [
             ...filtered,
             {
               role: 'assistant',
-              content: `Flowchart updated! Made changes based on: "${userInput.length > 60 ? userInput.slice(0, 60) + '…' : userInput}"`,
+              content: `Updated! "${userInput.length > 60 ? userInput.slice(0, 60) + '…' : userInput}"`,
               type: 'text',
               timestamp: new Date(),
             },
           ];
         });
       } else {
-        // Generate mode: create new flowchart
         newFlowchart = await generateFlowchart(userInput);
 
         const nodeCount = newFlowchart.nodes.length;
@@ -102,15 +130,8 @@ export default function App() {
       applyFlowchart(newFlowchart);
     } catch (error) {
       console.error('[App] Error:', error.message);
-
-      // Remove any pending system messages
       setMessages((prev) => prev.filter((m) => m.type !== 'system'));
-
-      addMessage(
-        'assistant',
-        error.message || 'Something went wrong. Please try again.',
-        'error'
-      );
+      addMessage('assistant', error.message || 'Something went wrong. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -119,9 +140,9 @@ export default function App() {
   return (
     <ReactFlowProvider>
       <div className="flex h-screen w-screen overflow-hidden bg-gray-950">
-        {/* ─── Left panel: Chat ──────────────────────────────────────── */}
+        {/* Left panel: Chat */}
         <div
-          className="flex-shrink-0 h-full border-r border-gray-800 overflow-hidden"
+          className="flex-shrink-0 h-full border-r border-gray-800/80 overflow-hidden"
           style={{ width: '36%', minWidth: '320px', maxWidth: '480px' }}
         >
           <ChatPanel
@@ -132,7 +153,7 @@ export default function App() {
           />
         </div>
 
-        {/* ─── Right panel: Canvas ───────────────────────────────────── */}
+        {/* Right panel: Canvas */}
         <div className="flex-1 h-full overflow-hidden relative">
           <FlowchartCanvas
             nodes={nodes}
@@ -140,6 +161,9 @@ export default function App() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             detectedLanguage={detectedLanguage !== 'EN' ? detectedLanguage : null}
+            onNodeLabelChange={handleNodeLabelChange}
+            onNodeDelete={handleNodeDelete}
+            onAddNode={handleAddNode}
           />
         </div>
       </div>
