@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { ReactFlowProvider, useNodesState, useEdgesState, addEdge, reconnectEdge } from 'reactflow';
+import { ReactFlowProvider, useNodesState, useEdgesState, addEdge, updateEdge } from 'reactflow';
 import ChatPanel from './components/ChatPanel.jsx';
 import FlowchartCanvas from './components/FlowchartCanvas.jsx';
 import { chatMessage, editFlowchart } from './services/api.js';
@@ -94,7 +94,7 @@ export default function App() {
 
   /** Reconnect an edge by dragging its endpoint to a new node/handle */
   const handleReconnect = useCallback((oldEdge, newConnection) => {
-    setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds));
+    setEdges((eds) => updateEdge(oldEdge, newConnection, eds));
     setCurrentFlowchart((prev) => {
       if (!prev) return prev;
       const filtered = prev.edges.filter(

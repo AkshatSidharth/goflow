@@ -10,7 +10,6 @@ import ReactFlow, {
   getSmoothStepPath,
   addEdge,
   ConnectionMode,
-  reconnectEdge,
 } from 'reactflow';
 import { toPng, toJpeg, toSvg } from 'html-to-image';
 import StartEndNode from './nodes/StartEndNode.jsx';
@@ -459,17 +458,17 @@ export default function FlowchartCanvas({
 
   // ─── Edge reconnect handlers ────────────────────────────────────────────────
 
-  const handleReconnectStart = useCallback(() => {
+  const handleEdgeUpdateStart = useCallback(() => {
     edgeReconnectSuccessful.current = false;
   }, []);
 
-  const handleReconnect = useCallback((oldEdge, newConnection) => {
+  const handleEdgeUpdate = useCallback((oldEdge, newConnection) => {
     edgeReconnectSuccessful.current = true;
     onReconnect?.(oldEdge, newConnection);
   }, [onReconnect]);
 
-  const handleReconnectEnd = useCallback((_, edge) => {
-    // If drag ended without a successful reconnect, remove the edge
+  const handleEdgeUpdateEnd = useCallback((_, edge) => {
+    // If drag ended without connecting to a node, remove the dangling edge
     if (!edgeReconnectSuccessful.current) {
       onEdgeDelete?.(edge.id, edge.source, edge.target);
     }
@@ -590,9 +589,10 @@ export default function FlowchartCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onReconnect={handleReconnect}
-        onReconnectStart={handleReconnectStart}
-        onReconnectEnd={handleReconnectEnd}
+        onEdgeUpdate={handleEdgeUpdate}
+        onEdgeUpdateStart={handleEdgeUpdateStart}
+        onEdgeUpdateEnd={handleEdgeUpdateEnd}
+        edgeUpdaterRadius={12}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
@@ -619,13 +619,14 @@ export default function FlowchartCanvas({
           className="border border-slate-700/80"
         />
         <MiniMap
-          position="bottom-left"
+          position="bottom-right"
           nodeColor={getMiniMapNodeColor}
           maskColor="rgba(15, 23, 42, 0.75)"
           style={{
             backgroundColor: '#111827',
             border: '1px solid #1e293b',
             borderRadius: 12,
+            marginBottom: 48,
           }}
         />
       </ReactFlow>
