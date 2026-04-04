@@ -5,10 +5,14 @@ import dagre from 'dagre';
  * These match the visual sizes of our custom nodes.
  */
 const NODE_DIMENSIONS = {
-  start: { width: 160, height: 56 },
-  end:   { width: 160, height: 56 },
+  start:    { width: 160, height: 56 },
+  end:      { width: 160, height: 56 },
   process:  { width: 200, height: 64 },
-  decision: { width: 160, height: 80 }, // visual diamond fits in this box
+  decision: { width: 160, height: 80 },
+  io:       { width: 180, height: 52 },
+  database: { width: 140, height: 80 },
+  document: { width: 180, height: 72 },
+  hexagon:  { width: 160, height: 64 },
 };
 
 const DEFAULT_DIMENSIONS = { width: 200, height: 64 };
@@ -178,10 +182,14 @@ export function convertAndLayout(flowchartData) {
  */
 function getReactFlowNodeType(apiType) {
   const typeMap = {
-    start: 'startEnd',
-    end: 'startEnd',
-    process: 'process',
+    start:    'startEnd',
+    end:      'startEnd',
+    process:  'process',
     decision: 'decision',
+    io:       'io',
+    database: 'database',
+    document: 'document',
+    hexagon:  'hexagon',
   };
   return typeMap[apiType] || 'process';
 }

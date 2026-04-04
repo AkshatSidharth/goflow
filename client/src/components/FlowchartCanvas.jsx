@@ -9,13 +9,19 @@ import ReactFlow, {
   EdgeLabelRenderer,
   getSmoothStepPath,
   addEdge,
+  ConnectionMode,
+  reconnectEdge,
 } from 'reactflow';
 import { toPng, toJpeg, toSvg } from 'html-to-image';
 import StartEndNode from './nodes/StartEndNode.jsx';
 import ProcessNode from './nodes/ProcessNode.jsx';
 import DecisionNode from './nodes/DecisionNode.jsx';
+import IONode from './nodes/IONode.jsx';
+import DatabaseNode from './nodes/DatabaseNode.jsx';
+import DocumentNode from './nodes/DocumentNode.jsx';
+import HexagonNode from './nodes/HexagonNode.jsx';
 
-// ─── Custom deletable edge ────────────────────────────────────────────────────
+// ─── Custom deletable + reconnectable edge ────────────────────────────────────
 
 function DeletableEdge({
   id, source, target,
@@ -36,7 +42,7 @@ function DeletableEdge({
 
   return (
     <>
-      {/* Wider transparent hit area for hover */}
+      {/* Wide transparent hit area for hover */}
       <path
         d={edgePath}
         fill="none"
@@ -95,6 +101,10 @@ const nodeTypes = {
   startEnd: StartEndNode,
   process: ProcessNode,
   decision: DecisionNode,
+  io: IONode,
+  database: DatabaseNode,
+  document: DocumentNode,
+  hexagon: HexagonNode,
 };
 
 const edgeTypes = {
@@ -107,11 +117,26 @@ function getMiniMapNodeColor(node) {
     case 'start':    return '#6366f1';
     case 'end':      return '#10b981';
     case 'decision': return '#f59e0b';
+    case 'io':       return '#06b6d4';
+    case 'database': return '#8b5cf6';
+    case 'document': return '#14b8a6';
+    case 'hexagon':  return '#f97316';
     default:         return '#475569';
   }
 }
 
 // ─── Add Node panel ───────────────────────────────────────────────────────────
+
+const NODE_TYPE_CONFIG = [
+  { value: 'process',  label: 'Process',   icon: '▭', color: 'text-slate-300',   bg: 'bg-slate-700',       border: 'border-slate-500',   desc: 'Action / step' },
+  { value: 'decision', label: 'Decision',  icon: '◇', color: 'text-amber-300',   bg: 'bg-amber-900/60',    border: 'border-amber-600',   desc: 'Branch / condition' },
+  { value: 'start',    label: 'Start',     icon: '▶', color: 'text-indigo-300',  bg: 'bg-indigo-900/60',   border: 'border-indigo-500',  desc: 'Entry point' },
+  { value: 'end',      label: 'End',       icon: '■', color: 'text-emerald-300', bg: 'bg-emerald-900/60',  border: 'border-emerald-500', desc: 'Terminator' },
+  { value: 'io',       label: 'I/O',       icon: '⇌', color: 'text-cyan-300',    bg: 'bg-cyan-900/60',     border: 'border-cyan-500',    desc: 'Input / Output' },
+  { value: 'database', label: 'Database',  icon: '⬡', color: 'text-violet-300',  bg: 'bg-violet-900/60',   border: 'border-violet-500',  desc: 'Storage' },
+  { value: 'document', label: 'Document',  icon: '📄', color: 'text-teal-300',    bg: 'bg-teal-900/60',     border: 'border-teal-500',    desc: 'Report / file' },
+  { value: 'hexagon',  label: 'Prep',      icon: '⬡', color: 'text-orange-300',  bg: 'bg-orange-900/60',   border: 'border-orange-500',  desc: 'Preparation' },
+];
 
 function AddNodePanel({ onAdd, onClose }) {
   const [nodeType, setNodeType] = useState('process');
@@ -130,17 +155,10 @@ function AddNodePanel({ onAdd, onClose }) {
     onClose();
   };
 
-  const NODE_TYPES = [
-    { value: 'process',  label: 'Process',  color: 'text-slate-300',  bg: 'bg-slate-700', border: 'border-slate-500' },
-    { value: 'decision', label: 'Decision', color: 'text-amber-300',  bg: 'bg-amber-900/60', border: 'border-amber-600' },
-    { value: 'start',    label: 'Start',    color: 'text-indigo-300', bg: 'bg-indigo-900/60', border: 'border-indigo-500' },
-    { value: 'end',      label: 'End',      color: 'text-emerald-300', bg: 'bg-emerald-900/60', border: 'border-emerald-500' },
-  ];
-
   return (
-    <div className="absolute top-14 right-3 z-30 w-60 bg-gray-900/95 backdrop-blur-md border border-gray-700/80 rounded-2xl shadow-2xl shadow-black/60 p-4">
+    <div className="absolute top-14 right-3 z-30 w-64 bg-gray-900/95 backdrop-blur-md border border-gray-700/80 rounded-2xl shadow-2xl shadow-black/60 p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-gray-200 font-semibold text-sm">Add Node</h3>
+        <h3 className="text-gray-200 font-semibold text-sm">Add Shape</h3>
         <button
           onClick={onClose}
           className="text-gray-500 hover:text-gray-300 transition-colors"
@@ -153,21 +171,24 @@ function AddNodePanel({ onAdd, onClose }) {
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-1.5 font-medium">Type</p>
-          <div className="grid grid-cols-2 gap-1.5">
-            {NODE_TYPES.map((t) => (
+          <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-1.5 font-medium">Shape</p>
+          <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-0.5">
+            {NODE_TYPE_CONFIG.map((t) => (
               <button
                 key={t.value}
                 type="button"
                 onClick={() => setNodeType(t.value)}
+                title={t.desc}
                 className={`
-                  px-2 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150
+                  flex flex-col items-start px-2.5 py-2 rounded-lg text-left border transition-all duration-150
                   ${nodeType === t.value
                     ? `${t.bg} ${t.border} ${t.color} shadow-sm`
                     : 'bg-gray-800/60 border-gray-700/60 text-gray-500 hover:border-gray-600 hover:text-gray-400'}
                 `}
               >
-                {t.label}
+                <span className="text-sm mb-0.5">{t.icon}</span>
+                <span className="text-xs font-medium leading-none">{t.label}</span>
+                <span className="text-[9px] opacity-60 leading-none mt-0.5">{t.desc}</span>
               </button>
             ))}
           </div>
@@ -209,7 +230,6 @@ function ExportDropdown({ onExport, isExporting, disabled }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // Close on outside click
   React.useEffect(() => {
     if (!open) return;
     const handler = (e) => {
@@ -294,11 +314,14 @@ function CanvasToolbar({ nodeCount, edgeCount, onExport, isExporting, detectedLa
             </>
           )}
         </div>
+        {/* Reconnect tip badge */}
+        <div className="bg-gray-900/80 backdrop-blur-md border border-gray-700/60 rounded-xl px-2.5 py-1.5 text-[10px] text-gray-500 hidden sm:flex items-center gap-1">
+          <span className="text-indigo-400">↩</span> drag edge ends to reconnect
+        </div>
       </div>
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2 pointer-events-auto">
-        {/* Add Node button */}
         <button
           onClick={onAddNodeClick}
           className={`
@@ -313,10 +336,9 @@ function CanvasToolbar({ nodeCount, edgeCount, onExport, isExporting, detectedLa
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Add Node
+          Add Shape
         </button>
 
-        {/* Export dropdown */}
         <ExportDropdown
           onExport={onExport}
           isExporting={isExporting}
@@ -356,8 +378,12 @@ function EmptyState() {
           {[
             { icon: '◇', label: 'Decision branches', color: 'text-amber-400' },
             { icon: '○', label: 'Start / End ovals',  color: 'text-indigo-400' },
-            { icon: '□', label: 'Process steps',      color: 'text-slate-300' },
-            { icon: '↔', label: 'Connect nodes',      color: 'text-sky-400' },
+            { icon: '▭', label: 'Process steps',      color: 'text-slate-300' },
+            { icon: '⇌', label: 'I/O parallelogram',  color: 'text-cyan-400' },
+            { icon: '⬡', label: 'Database cylinder',  color: 'text-violet-400' },
+            { icon: '📄', label: 'Document shape',     color: 'text-teal-400' },
+            { icon: '⬡', label: 'Prep hexagon',       color: 'text-orange-400' },
+            { icon: '↩', label: 'Drag to reconnect',  color: 'text-sky-400' },
           ].map(({ icon, label, color }) => (
             <div key={label} className="flex items-center gap-2 bg-gray-800/40 border border-gray-700/40 rounded-xl px-3 py-2">
               <span className={`${color} font-bold text-base`}>{icon}</span>
@@ -367,7 +393,7 @@ function EmptyState() {
         </div>
 
         <p className="text-gray-600 text-xs">
-          Tip: drag from a node handle to connect · hover an edge to remove it
+          Tip: drag node handle to connect · hover edge to delete · drag edge end to reconnect
         </p>
       </div>
     </div>
@@ -387,11 +413,14 @@ export default function FlowchartCanvas({
   onAddNode,
   onConnect,
   onEdgeDelete,
+  onReconnect,
 }) {
   const reactFlowWrapper = useRef(null);
   const { fitView } = useReactFlow();
   const [isExporting, setIsExporting] = React.useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
+  // Track when an edge reconnect is in progress to prevent accidental deletes
+  const edgeReconnectSuccessful = useRef(true);
 
   const hasContent = nodes && nodes.length > 0;
 
@@ -417,15 +446,35 @@ export default function FlowchartCanvas({
     [nodes, onNodeLabelChange, onNodeDelete]
   );
 
-  // Inject delete callback into each edge's data and force deletable type
+  // Inject delete callback + make edges reconnectable
   const enrichedEdges = useMemo(() =>
     edges.map((e) => ({
       ...e,
       type: 'deletable',
+      reconnectable: true,
       data: { ...e.data, onDelete: onEdgeDelete },
     })),
     [edges, onEdgeDelete]
   );
+
+  // ─── Edge reconnect handlers ────────────────────────────────────────────────
+
+  const handleReconnectStart = useCallback(() => {
+    edgeReconnectSuccessful.current = false;
+  }, []);
+
+  const handleReconnect = useCallback((oldEdge, newConnection) => {
+    edgeReconnectSuccessful.current = true;
+    onReconnect?.(oldEdge, newConnection);
+  }, [onReconnect]);
+
+  const handleReconnectEnd = useCallback((_, edge) => {
+    // If drag ended without a successful reconnect, remove the edge
+    if (!edgeReconnectSuccessful.current) {
+      onEdgeDelete?.(edge.id, edge.source, edge.target);
+    }
+    edgeReconnectSuccessful.current = true;
+  }, [onEdgeDelete]);
 
   // ─── Export ────────────────────────────────────────────────────────────────
 
@@ -468,15 +517,12 @@ export default function FlowchartCanvas({
       if (format === 'png') {
         const url = await toPng(targetEl, commonOpts);
         downloadDataUrl(url, `flowmind-${ts}.png`);
-
       } else if (format === 'jpg') {
         const url = await toJpeg(targetEl, { ...commonOpts, quality: 0.95 });
         downloadDataUrl(url, `flowmind-${ts}.jpg`);
-
       } else if (format === 'svg') {
         const url = await toSvg(targetEl, commonOpts);
         downloadDataUrl(url, `flowmind-${ts}.svg`);
-
       } else if (format === 'pdf') {
         const pngUrl = await toPng(targetEl, commonOpts);
         const img = new Image();
@@ -508,6 +554,7 @@ export default function FlowchartCanvas({
 
   const defaultEdgeOptions = useMemo(() => ({
     type: 'deletable',
+    reconnectable: true,
     style: { stroke: '#64748b', strokeWidth: 2 },
     markerEnd: { type: 'arrowclosed', color: '#64748b' },
   }), []);
@@ -529,7 +576,7 @@ export default function FlowchartCanvas({
         </div>
       )}
 
-      {/* Add Node panel */}
+      {/* Add Shape panel */}
       {showAddPanel && (
         <AddNodePanel
           onAdd={handleAddNode}
@@ -543,9 +590,13 @@ export default function FlowchartCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onReconnect={handleReconnect}
+        onReconnectStart={handleReconnectStart}
+        onReconnectEnd={handleReconnectEnd}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
+        connectionMode={ConnectionMode.Loose}
         fitView
         fitViewOptions={{ padding: 0.15 }}
         minZoom={0.1}

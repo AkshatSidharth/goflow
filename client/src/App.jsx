@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { ReactFlowProvider, useNodesState, useEdgesState, addEdge } from 'reactflow';
+import { ReactFlowProvider, useNodesState, useEdgesState, addEdge, reconnectEdge } from 'reactflow';
 import ChatPanel from './components/ChatPanel.jsx';
 import FlowchartCanvas from './components/FlowchartCanvas.jsx';
 import { chatMessage, editFlowchart } from './services/api.js';
@@ -92,12 +92,31 @@ export default function App() {
     });
   }, [setEdges]);
 
+  /** Reconnect an edge by dragging its endpoint to a new node/handle */
+  const handleReconnect = useCallback((oldEdge, newConnection) => {
+    setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds));
+    setCurrentFlowchart((prev) => {
+      if (!prev) return prev;
+      const filtered = prev.edges.filter(
+        (e) => !(e.from === oldEdge.source && e.to === oldEdge.target)
+      );
+      return {
+        ...prev,
+        edges: [...filtered, { from: newConnection.source, to: newConnection.target, label: oldEdge.label || '' }],
+      };
+    });
+  }, [setEdges]);
+
   /** Add a new node manually to the canvas */
   const handleAddNode = useCallback((nodeType, label) => {
     const newId = `manual-${Date.now()}`;
     const rfType =
       nodeType === 'decision' ? 'decision'
       : nodeType === 'start' || nodeType === 'end' ? 'startEnd'
+      : nodeType === 'io' ? 'io'
+      : nodeType === 'database' ? 'database'
+      : nodeType === 'document' ? 'document'
+      : nodeType === 'hexagon' ? 'hexagon'
       : 'process';
 
     const newRfNode = {
@@ -208,6 +227,7 @@ export default function App() {
             onAddNode={handleAddNode}
             onConnect={handleConnect}
             onEdgeDelete={handleEdgeDelete}
+            onReconnect={handleReconnect}
           />
         </div>
       </div>
