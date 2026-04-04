@@ -46,12 +46,20 @@ function DeletableEdge({
         d={edgePath}
         fill="none"
         stroke="transparent"
-        strokeWidth={16}
+        strokeWidth={20}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{ cursor: 'pointer' }}
       />
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+
+      {/* Visible grab handles at source + target — appear on hover so user knows where to drag */}
+      {hovered && (
+        <>
+          <circle cx={sourceX} cy={sourceY} r={6} fill="#6366f1" stroke="#0f172a" strokeWidth={2} style={{ pointerEvents: 'none' }} />
+          <circle cx={targetX} cy={targetY} r={6} fill="#6366f1" stroke="#0f172a" strokeWidth={2} style={{ pointerEvents: 'none' }} />
+        </>
+      )}
 
       <EdgeLabelRenderer>
         {/* Edge label */}
@@ -291,10 +299,10 @@ function ExportDropdown({ onExport, isExporting, disabled }) {
 
 // ─── Canvas toolbar ───────────────────────────────────────────────────────────
 
-function CanvasToolbar({ nodeCount, edgeCount, onExport, isExporting, detectedLanguage, onAddNodeClick, showAddPanel }) {
+function CanvasToolbar({ nodeCount, edgeCount, onExport, isExporting, detectedLanguage, onAddNodeClick, showAddPanel, onUndo, onRedo, canUndo, canRedo }) {
   return (
     <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2 pointer-events-none">
-      {/* Left: Stats */}
+      {/* Left: Stats + Undo/Redo */}
       <div className="flex items-center gap-2 pointer-events-auto">
         <div className="bg-gray-900/90 backdrop-blur-md border border-gray-700/80 rounded-xl px-3 py-1.5 flex items-center gap-3 text-xs shadow-lg">
           <span className="text-gray-400">
@@ -313,9 +321,29 @@ function CanvasToolbar({ nodeCount, edgeCount, onExport, isExporting, detectedLa
             </>
           )}
         </div>
-        {/* Reconnect tip badge */}
-        <div className="bg-gray-900/80 backdrop-blur-md border border-gray-700/60 rounded-xl px-2.5 py-1.5 text-[10px] text-gray-500 hidden sm:flex items-center gap-1">
-          <span className="text-indigo-400">↩</span> drag edge ends to reconnect
+
+        {/* Undo / Redo */}
+        <div className="bg-gray-900/90 backdrop-blur-md border border-gray-700/80 rounded-xl flex items-center shadow-lg overflow-hidden divide-x divide-gray-700/80">
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+            className="px-2.5 py-1.5 text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+            </svg>
+          </button>
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Y)"
+            className="px-2.5 py-1.5 text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6m0 0l-6-6m6 6H9a6 6 0 000 12h3" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -413,6 +441,10 @@ export default function FlowchartCanvas({
   onConnect,
   onEdgeDelete,
   onReconnect,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }) {
   const reactFlowWrapper = useRef(null);
   const { fitView } = useReactFlow();
@@ -450,7 +482,7 @@ export default function FlowchartCanvas({
     edges.map((e) => ({
       ...e,
       type: 'deletable',
-      reconnectable: true,
+
       data: { ...e.data, onDelete: onEdgeDelete },
     })),
     [edges, onEdgeDelete]
@@ -571,6 +603,10 @@ export default function FlowchartCanvas({
             detectedLanguage={detectedLanguage}
             onAddNodeClick={() => setShowAddPanel((v) => !v)}
             showAddPanel={showAddPanel}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            canUndo={canUndo}
+            canRedo={canRedo}
           />
         </div>
       )}
@@ -592,7 +628,7 @@ export default function FlowchartCanvas({
         onEdgeUpdate={handleEdgeUpdate}
         onEdgeUpdateStart={handleEdgeUpdateStart}
         onEdgeUpdateEnd={handleEdgeUpdateEnd}
-        edgeUpdaterRadius={12}
+        edgeUpdaterRadius={20}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
