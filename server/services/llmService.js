@@ -580,7 +580,14 @@ export async function chat(userInput, history = []) {
   const responseText = response.choices[0]?.message?.content;
   if (!responseText) throw new Error('LLM returned empty content');
 
-  const rawData = extractJSON(responseText);
+  // Try to parse JSON — if the model returned plain text, treat it as a text reply
+  let rawData;
+  try {
+    rawData = extractJSON(responseText);
+  } catch {
+    // LLM returned prose instead of JSON — surface it as a text message
+    return { type: 'text', message: responseText.trim() };
+  }
 
   if (rawData.type === 'text') {
     return { type: 'text', message: rawData.message || '' };
