@@ -524,7 +524,7 @@ function SettingsToggle({ label, checked, onChange }) {
   );
 }
 
-function CanvasSettingsPanel({ gridVisible, onGridToggle, snapEnabled, onSnapToggle, snapSize, onSnapSizeChange, pageMode, onPageModeChange, onClose }) {
+function CanvasSettingsPanel({ gridVisible, onGridToggle, gridStyle, onGridStyleChange, snapEnabled, onSnapToggle, snapSize, onSnapSizeChange, pageMode, onPageModeChange, onClose }) {
   return (
     <div className="absolute top-14 right-3 z-40 w-60 bg-gray-900/98 backdrop-blur-md border border-gray-700/80 rounded-2xl shadow-2xl shadow-black/60 p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -538,6 +538,28 @@ function CanvasSettingsPanel({ gridVisible, onGridToggle, snapEnabled, onSnapTog
       <div className="space-y-2.5">
         <p className="text-gray-600 text-[10px] uppercase tracking-wider font-semibold">Grid</p>
         <SettingsToggle label="Show grid" checked={gridVisible} onChange={onGridToggle} />
+        {gridVisible && (
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400 text-xs">Grid style</span>
+            <div className="flex gap-1">
+              {[
+                { id: 'lines', label: '≡' },
+                { id: 'dots',  label: '⋯' },
+                { id: 'cross', label: '✕' },
+              ].map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => onGridStyleChange(id)}
+                  title={id}
+                  className={`px-2 py-0.5 rounded text-xs font-bold transition-colors
+                    ${gridStyle === id ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <SettingsToggle label="Snap to grid" checked={snapEnabled} onChange={onSnapToggle} />
         {snapEnabled && (
           <div className="flex items-center justify-between">
@@ -734,6 +756,7 @@ export default function FlowchartCanvas({
   // ─── Canvas settings ──────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false);
   const [gridVisible, setGridVisible] = useState(true);
+  const [gridStyle, setGridStyle] = useState('lines'); // 'lines' | 'dots' | 'cross'
   const [snapEnabled, setSnapEnabled] = useState(false);
   const [snapSize, setSnapSize] = useState(20);
   const [pageMode, setPageMode] = useState('infinite');
@@ -1049,6 +1072,8 @@ export default function FlowchartCanvas({
         <CanvasSettingsPanel
           gridVisible={gridVisible}
           onGridToggle={setGridVisible}
+          gridStyle={gridStyle}
+          onGridStyleChange={setGridStyle}
           snapEnabled={snapEnabled}
           onSnapToggle={setSnapEnabled}
           snapSize={snapSize}
@@ -1106,10 +1131,14 @@ export default function FlowchartCanvas({
       >
         {gridVisible && (
           <Background
-            variant={BackgroundVariant.Dots}
-            gap={snapEnabled ? snapSize : 24}
-            size={1}
-            color="#1e293b"
+            variant={
+              gridStyle === 'dots'  ? BackgroundVariant.Dots
+              : gridStyle === 'cross' ? BackgroundVariant.Cross
+              : BackgroundVariant.Lines
+            }
+            gap={snapEnabled ? snapSize : 20}
+            size={gridStyle === 'dots' ? 2 : 1}
+            color={gridStyle === 'lines' ? '#1e3a5f' : '#2d4a6b'}
           />
         )}
         <Controls
