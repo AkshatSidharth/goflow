@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect, useCallback } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useStore } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 
 function RotationHandle({ id, data }) {
@@ -45,7 +45,7 @@ function RotationHandle({ id, data }) {
 }
 
 /** Cylinder shape — represents a database or storage step */
-const DatabaseNode = memo(({ id, data, selected, style: rfStyle }) => {
+const DatabaseNode = memo(({ id, data, selected }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
   const inputRef = useRef(null);
@@ -83,8 +83,8 @@ const DatabaseNode = memo(({ id, data, selected, style: rfStyle }) => {
   }, [data, id]);
 
   const ringClass = selected ? 'ring-2 ring-violet-400 ring-offset-1 ring-offset-gray-900' : '';
-  const nodeW = rfStyle?.width  ?? 110;
-  const nodeH = rfStyle?.height ?? 62;
+  const nodeW = useStore(s => s.nodeInternals.get(id)?.width  ?? 110);
+  const nodeH = useStore(s => s.nodeInternals.get(id)?.height ?? 62);
   const rx = (nodeW / 2) - 1;
   const ry = Math.max(6, nodeH * 0.16);
 

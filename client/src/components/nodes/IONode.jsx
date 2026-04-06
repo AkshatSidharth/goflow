@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect, useCallback } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useStore } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 
 function RotationHandle({ id, data }) {
@@ -45,7 +45,7 @@ function RotationHandle({ id, data }) {
 }
 
 /** Parallelogram shape — represents Input/Output data operations */
-const IONode = memo(({ id, data, selected, style: rfStyle }) => {
+const IONode = memo(({ id, data, selected }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
   const inputRef = useRef(null);
@@ -84,8 +84,8 @@ const IONode = memo(({ id, data, selected, style: rfStyle }) => {
 
   const ringClass = selected ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-gray-900' : '';
 
-  const nodeW = rfStyle?.width  ?? 140;
-  const nodeH = rfStyle?.height ?? 40;
+  const nodeW = useStore(s => s.nodeInternals.get(id)?.width  ?? 140);
+  const nodeH = useStore(s => s.nodeInternals.get(id)?.height ?? 40);
 
   return (
     <div

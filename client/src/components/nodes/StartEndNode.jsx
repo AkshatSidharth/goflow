@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect, useCallback } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useStore } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 
 function RotationHandle({ id, data }) {
@@ -44,7 +44,7 @@ function RotationHandle({ id, data }) {
   );
 }
 
-const StartEndNode = memo(({ id, data, selected, style: rfStyle }) => {
+const StartEndNode = memo(({ id, data, selected }) => {
   const isStart = data.nodeType === 'start';
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
@@ -99,8 +99,8 @@ const StartEndNode = memo(({ id, data, selected, style: rfStyle }) => {
       : 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-gray-900'
     : '';
 
-  const nodeW = rfStyle?.width  ?? 120;
-  const nodeH = rfStyle?.height ?? 34;
+  const nodeW = useStore(s => s.nodeInternals.get(id)?.width  ?? 120);
+  const nodeH = useStore(s => s.nodeInternals.get(id)?.height ?? 34);
 
   return (
     <div

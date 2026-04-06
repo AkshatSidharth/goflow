@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect, useCallback } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useStore } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 
 function RotationHandle({ id, data }) {
@@ -45,7 +45,7 @@ function RotationHandle({ id, data }) {
 }
 
 /** Hexagon shape — represents a preparation or manual operation step */
-const HexagonNode = memo(({ id, data, selected, style: rfStyle }) => {
+const HexagonNode = memo(({ id, data, selected }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
   const inputRef = useRef(null);
@@ -83,8 +83,8 @@ const HexagonNode = memo(({ id, data, selected, style: rfStyle }) => {
   }, [data, id]);
 
   const ringClass = selected ? 'ring-2 ring-orange-400 ring-offset-1 ring-offset-gray-900' : '';
-  const nodeW = rfStyle?.width  ?? 130;
-  const nodeH = rfStyle?.height ?? 50;
+  const nodeW = useStore(s => s.nodeInternals.get(id)?.width  ?? 130);
+  const nodeH = useStore(s => s.nodeInternals.get(id)?.height ?? 50);
   // Flat-top hexagon points
   const pts = [
     `${nodeW * 0.22},2`,

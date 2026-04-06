@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect, useCallback } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useStore } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 
 function RotationHandle({ id, data }) {
@@ -45,7 +45,7 @@ function RotationHandle({ id, data }) {
 }
 
 /** Document shape — rectangle with a wavy/curled bottom edge */
-const DocumentNode = memo(({ id, data, selected, style: rfStyle }) => {
+const DocumentNode = memo(({ id, data, selected }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
   const inputRef = useRef(null);
@@ -83,8 +83,8 @@ const DocumentNode = memo(({ id, data, selected, style: rfStyle }) => {
   }, [data, id]);
 
   const ringClass = selected ? 'ring-2 ring-teal-400 ring-offset-1 ring-offset-gray-900' : '';
-  const nodeW = rfStyle?.width  ?? 150;
-  const nodeH = rfStyle?.height ?? 56;
+  const nodeW = useStore(s => s.nodeInternals.get(id)?.width  ?? 150);
+  const nodeH = useStore(s => s.nodeInternals.get(id)?.height ?? 56);
   // Wave path: flat sides + top, wavy bottom
   const wavePath = `M 1,1 H ${nodeW - 1} V ${nodeH - 12} Q ${nodeW * 0.875},${nodeH + 2} ${nodeW * 0.75},${nodeH - 12} Q ${nodeW * 0.625},${nodeH - 24} ${nodeW * 0.5},${nodeH - 12} Q ${nodeW * 0.375},${nodeH} ${nodeW * 0.25},${nodeH - 12} Q ${nodeW * 0.125},${nodeH - 24} 1,${nodeH - 12} Z`;
 
