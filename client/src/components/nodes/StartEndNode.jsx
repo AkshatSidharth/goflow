@@ -70,11 +70,13 @@ const StartEndNode = memo(({ id, data, selected }) => {
       style={{ cursor: isEditing ? 'text' : 'default' }}
       onDoubleClick={handleDoubleClick}
     >
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', top: -4 }}
-      />
+      {/* Bidirectional handles at all 4 positions */}
+      <Handle type="target" position={Position.Top}    id="top-t"    style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', top: -4 }} />
+      <Handle type="source" position={Position.Top}    id="top-s"    style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', top: -4 }} />
+      <Handle type="target" position={Position.Left}   id="left-t"   style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', left: -4 }} />
+      <Handle type="source" position={Position.Left}   id="left-s"   style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', left: -4 }} />
+      <Handle type="target" position={Position.Right}  id="right-t"  style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', right: -4 }} />
+      <Handle type="source" position={Position.Right}  id="right-s"  style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', right: -4 }} />
 
       {isEditing ? (
         <input
@@ -106,11 +108,8 @@ const StartEndNode = memo(({ id, data, selected }) => {
         </button>
       )}
 
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', bottom: -4 }}
-      />
+      <Handle type="target" position={Position.Bottom} id="bottom-t" style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', bottom: -4 }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-s" style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', bottom: -4 }} />
     </div>
   );
 });

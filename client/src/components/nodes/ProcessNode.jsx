@@ -63,18 +63,15 @@ const ProcessNode = memo(({ id, data, selected }) => {
       style={{ cursor: isEditing ? 'text' : 'default' }}
       onDoubleClick={handleDoubleClick}
     >
-      {/* Target handle (top) */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', top: -4 }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left-target"
-        style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', left: -4, opacity: 0 }}
-      />
+      {/* Bidirectional handles — each position has both source + target stacked */}
+      <Handle type="target" position={Position.Top}    id="top-t"    style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', top: -4 }} />
+      <Handle type="source" position={Position.Top}    id="top-s"    style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', top: -4 }} />
+      <Handle type="target" position={Position.Bottom} id="bottom-t" style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', bottom: -4 }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-s" style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', bottom: -4 }} />
+      <Handle type="target" position={Position.Left}   id="left-t"   style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', left: -4 }} />
+      <Handle type="source" position={Position.Left}   id="left-s"   style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', left: -4 }} />
+      <Handle type="target" position={Position.Right}  id="right-t"  style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', right: -4 }} />
+      <Handle type="source" position={Position.Right}  id="right-s"  style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', right: -4 }} />
 
       {isEditing ? (
         <input
@@ -115,17 +112,6 @@ const ProcessNode = memo(({ id, data, selected }) => {
         </div>
       )}
 
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', bottom: -4 }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right-source"
-        style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', right: -4, opacity: 0 }}
-      />
     </div>
   );
 });

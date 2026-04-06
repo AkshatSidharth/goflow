@@ -60,11 +60,11 @@ const IONode = memo(({ id, data, selected }) => {
         />
       </svg>
 
-      {/* Handles */}
-      <Handle type="target" position={Position.Top}
-        style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', top: -4, left: '50%', transform: 'translateX(-50%)' }} />
-      <Handle type="target" position={Position.Left}
-        style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', left: -4, top: '50%', transform: 'translateY(-50%)' }} />
+      {/* Bidirectional handles at all 4 positions */}
+      <Handle type="target" position={Position.Top}    id="top-t"    style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', top: -4, left: '50%', transform: 'translateX(-50%)' }} />
+      <Handle type="source" position={Position.Top}    id="top-s"    style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', top: -4, left: '50%', transform: 'translateX(-50%)' }} />
+      <Handle type="target" position={Position.Left}   id="left-t"   style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', left: -4, top: '50%', transform: 'translateY(-50%)' }} />
+      <Handle type="source" position={Position.Left}   id="left-s"   style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', left: -4, top: '50%', transform: 'translateY(-50%)' }} />
 
       {/* Label */}
       <div className="absolute inset-0 flex items-center justify-center px-6">
@@ -99,10 +99,10 @@ const IONode = memo(({ id, data, selected }) => {
         >×</button>
       )}
 
-      <Handle type="source" position={Position.Bottom}
-        style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', bottom: -4, left: '50%', transform: 'translateX(-50%)' }} />
-      <Handle type="source" position={Position.Right}
-        style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', right: -4, top: '50%', transform: 'translateY(-50%)' }} />
+      <Handle type="target" position={Position.Bottom} id="bottom-t" style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', bottom: -4, left: '50%', transform: 'translateX(-50%)' }} />
+      <Handle type="source" position={Position.Bottom} id="bottom-s" style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', bottom: -4, left: '50%', transform: 'translateX(-50%)' }} />
+      <Handle type="target" position={Position.Right}  id="right-t"  style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', right: -4, top: '50%', transform: 'translateY(-50%)' }} />
+      <Handle type="source" position={Position.Right}  id="right-s"  style={{ background: '#22d3ee', width: 8, height: 8, border: '2px solid #0f172a', right: -4, top: '50%', transform: 'translateY(-50%)' }} />
     </div>
   );
 });
