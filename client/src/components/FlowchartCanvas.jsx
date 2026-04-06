@@ -455,14 +455,16 @@ export default function FlowchartCanvas({
 
   const hasContent = nodes && nodes.length > 0;
 
+  const nodeCount = nodes.length;
+
+  // Only re-fit when nodes are added/removed — NOT on drag (position change)
   React.useEffect(() => {
-    if (hasContent) {
-      const timer = setTimeout(() => {
-        fitView({ padding: 0.2, duration: 400, maxZoom: 1 });
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [nodes, fitView, hasContent]);
+    if (nodeCount === 0) return;
+    const timer = setTimeout(() => {
+      fitView({ padding: 0.2, duration: 400, maxZoom: 1 });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [nodeCount, fitView]);
 
   // Inject editing callbacks into each node's data
   const enrichedNodes = useMemo(() =>
