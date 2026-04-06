@@ -249,11 +249,11 @@ export default function App() {
 
   return (
     <ReactFlowProvider>
-      <div className="flex h-screen w-screen overflow-hidden bg-gray-950">
+      <div className="flex h-screen w-screen overflow-hidden" style={{ background: 'var(--bg-app)' }}>
         {/* Left panel: Chat */}
         <div
           className="flex-shrink-0 h-full border-r border-gray-800/80 overflow-hidden"
-          style={{ width: '36%', minWidth: '320px', maxWidth: '480px' }}
+          style={{ width: '34%', minWidth: '300px', maxWidth: '440px' }}
         >
           <ChatPanel
             messages={messages}
@@ -263,6 +263,7 @@ export default function App() {
             hasPending={!!pendingFlowchart}
             onConfirm={handleConfirm}
             onCancel={handleCancel}
+            onAddNode={handleAddNode}
           />
         </div>
 
