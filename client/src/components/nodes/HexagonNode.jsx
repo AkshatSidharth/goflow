@@ -45,7 +45,7 @@ function RotationHandle({ id, data }) {
 }
 
 /** Hexagon shape — represents a preparation or manual operation step */
-const HexagonNode = memo(({ id, data, selected }) => {
+const HexagonNode = memo(({ id, data, selected, style: rfStyle }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
   const inputRef = useRef(null);
@@ -83,21 +83,22 @@ const HexagonNode = memo(({ id, data, selected }) => {
   }, [data, id]);
 
   const ringClass = selected ? 'ring-2 ring-orange-400 ring-offset-1 ring-offset-gray-900' : '';
-  const W = 130, H = 50;
+  const nodeW = rfStyle?.width  ?? 130;
+  const nodeH = rfStyle?.height ?? 50;
   // Flat-top hexagon points
   const pts = [
-    `${W * 0.22},2`,
-    `${W * 0.78},2`,
-    `${W - 2},${H / 2}`,
-    `${W * 0.78},${H - 2}`,
-    `${W * 0.22},${H - 2}`,
-    `2,${H / 2}`,
+    `${nodeW * 0.22},2`,
+    `${nodeW * 0.78},2`,
+    `${nodeW - 2},${nodeH / 2}`,
+    `${nodeW * 0.78},${nodeH - 2}`,
+    `${nodeW * 0.22},${nodeH - 2}`,
+    `2,${nodeH / 2}`,
   ].join(' ');
 
   return (
     <div
       className={`flowmind-node relative select-none ${ringClass}`}
-      style={{ width: W, height: H, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
@@ -113,7 +114,7 @@ const HexagonNode = memo(({ id, data, selected }) => {
       )}
 
       {/* Hexagon SVG */}
-      <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${W} ${H}`} overflow="visible">
+      <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${nodeW} ${nodeH}`} overflow="visible">
         <polygon
           points={pts}
           fill="rgba(194,65,12,0.25)"

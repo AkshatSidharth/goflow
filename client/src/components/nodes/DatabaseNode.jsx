@@ -45,7 +45,7 @@ function RotationHandle({ id, data }) {
 }
 
 /** Cylinder shape — represents a database or storage step */
-const DatabaseNode = memo(({ id, data, selected }) => {
+const DatabaseNode = memo(({ id, data, selected, style: rfStyle }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
   const inputRef = useRef(null);
@@ -83,12 +83,15 @@ const DatabaseNode = memo(({ id, data, selected }) => {
   }, [data, id]);
 
   const ringClass = selected ? 'ring-2 ring-violet-400 ring-offset-1 ring-offset-gray-900' : '';
-  const W = 110, H = 62, rx = 55, ry = 10;
+  const nodeW = rfStyle?.width  ?? 110;
+  const nodeH = rfStyle?.height ?? 62;
+  const rx = (nodeW / 2) - 1;
+  const ry = Math.max(6, nodeH * 0.16);
 
   return (
     <div
       className={`flowmind-node relative select-none ${ringClass}`}
-      style={{ width: W, height: H, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
@@ -104,26 +107,26 @@ const DatabaseNode = memo(({ id, data, selected }) => {
       )}
 
       {/* Cylinder SVG */}
-      <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${W} ${H}`} overflow="visible">
+      <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${nodeW} ${nodeH}`} overflow="visible">
         {/* Body */}
         <rect
-          x="1" y={ry} width={W - 2} height={H - ry * 2}
+          x="1" y={ry} width={nodeW - 2} height={nodeH - ry * 2}
           fill="rgba(109,40,217,0.25)"
           stroke="rgba(139,92,246,0.7)"
           strokeWidth="1.5"
         />
         {/* Bottom ellipse */}
         <ellipse
-          cx={W / 2} cy={H - ry}
-          rx={rx - 1} ry={ry - 1}
+          cx={nodeW / 2} cy={nodeH - ry}
+          rx={rx} ry={ry - 1}
           fill="rgba(109,40,217,0.35)"
           stroke="rgba(139,92,246,0.7)"
           strokeWidth="1.5"
         />
         {/* Top ellipse */}
         <ellipse
-          cx={W / 2} cy={ry}
-          rx={rx - 1} ry={ry - 1}
+          cx={nodeW / 2} cy={ry}
+          rx={rx} ry={ry - 1}
           fill="rgba(109,40,217,0.5)"
           stroke="rgba(139,92,246,0.7)"
           strokeWidth="1.5"

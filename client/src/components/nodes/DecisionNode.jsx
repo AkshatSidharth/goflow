@@ -44,7 +44,7 @@ function RotationHandle({ id, data }) {
   );
 }
 
-const DecisionNode = memo(({ id, data, selected }) => {
+const DecisionNode = memo(({ id, data, selected, style: rfStyle }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
   const inputRef = useRef(null);
@@ -90,13 +90,13 @@ const DecisionNode = memo(({ id, data, selected }) => {
     ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-900'
     : '';
 
-  const containerSize = 110;
-  const innerSize = 76;
+  const nodeW = rfStyle?.width  ?? 110;
+  const nodeH = rfStyle?.height ?? 110;
 
   return (
     <div
       className={`flowmind-node relative select-none ${ringClass}`}
-      style={{ width: containerSize, height: containerSize, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
@@ -111,16 +111,20 @@ const DecisionNode = memo(({ id, data, selected }) => {
         <RotationHandle id={id} data={data} />
       )}
 
-      {/* Diamond shape */}
-      <div
-        className="absolute inset-0 flex items-center justify-center"
-        style={{ transform: 'rotate(45deg)', transformOrigin: 'center' }}
+      {/* Diamond via SVG — scales with node size */}
+      <svg
+        className="absolute inset-0 w-full h-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        style={{ overflow: 'visible' }}
       >
-        <div
-          className="bg-amber-900/80 border-2 border-amber-600/70 shadow-lg shadow-amber-900/50 transition-all duration-200 hover:bg-amber-800/80 hover:border-amber-500/80 backdrop-blur-sm"
-          style={{ width: innerSize, height: innerSize, borderRadius: 8 }}
+        <polygon
+          points="50,3 97,50 50,97 3,50"
+          fill="rgba(120,53,15,0.8)"
+          stroke="rgba(245,158,11,0.7)"
+          strokeWidth="1.5"
         />
-      </div>
+      </svg>
 
       {/* Label / edit input */}
       <div

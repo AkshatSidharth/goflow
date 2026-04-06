@@ -44,7 +44,7 @@ function RotationHandle({ id, data }) {
   );
 }
 
-const StartEndNode = memo(({ id, data, selected }) => {
+const StartEndNode = memo(({ id, data, selected, style: rfStyle }) => {
   const isStart = data.nodeType === 'start';
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
@@ -99,20 +99,13 @@ const StartEndNode = memo(({ id, data, selected }) => {
       : 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-gray-900'
     : '';
 
+  const nodeW = rfStyle?.width  ?? 120;
+  const nodeH = rfStyle?.height ?? 34;
+
   return (
     <div
-      className={`
-        flowmind-node
-        relative flex items-center justify-center
-        min-w-[90px] max-w-[150px] h-[34px] px-4
-        rounded-full
-        bg-gradient-to-r ${gradientClass}
-        border ${borderClass}
-        shadow-lg ${shadowClass}
-        ${ringClass}
-        select-none transition-all duration-200
-      `}
-      style={{ cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      className={`flowmind-node relative flex items-center justify-center px-4 rounded-full bg-gradient-to-r ${gradientClass} border ${borderClass} shadow-lg ${shadowClass} ${ringClass} select-none transition-all duration-200`}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer

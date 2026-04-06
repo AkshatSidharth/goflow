@@ -45,7 +45,7 @@ function RotationHandle({ id, data }) {
 }
 
 /** Document shape — rectangle with a wavy/curled bottom edge */
-const DocumentNode = memo(({ id, data, selected }) => {
+const DocumentNode = memo(({ id, data, selected, style: rfStyle }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
   const inputRef = useRef(null);
@@ -83,14 +83,15 @@ const DocumentNode = memo(({ id, data, selected }) => {
   }, [data, id]);
 
   const ringClass = selected ? 'ring-2 ring-teal-400 ring-offset-1 ring-offset-gray-900' : '';
-  const W = 150, H = 56;
+  const nodeW = rfStyle?.width  ?? 150;
+  const nodeH = rfStyle?.height ?? 56;
   // Wave path: flat sides + top, wavy bottom
-  const wavePath = `M 1,1 H ${W - 1} V ${H - 12} Q ${W * 0.875},${H + 2} ${W * 0.75},${H - 12} Q ${W * 0.625},${H - 24} ${W * 0.5},${H - 12} Q ${W * 0.375},${H} ${W * 0.25},${H - 12} Q ${W * 0.125},${H - 24} 1,${H - 12} Z`;
+  const wavePath = `M 1,1 H ${nodeW - 1} V ${nodeH - 12} Q ${nodeW * 0.875},${nodeH + 2} ${nodeW * 0.75},${nodeH - 12} Q ${nodeW * 0.625},${nodeH - 24} ${nodeW * 0.5},${nodeH - 12} Q ${nodeW * 0.375},${nodeH} ${nodeW * 0.25},${nodeH - 12} Q ${nodeW * 0.125},${nodeH - 24} 1,${nodeH - 12} Z`;
 
   return (
     <div
       className={`flowmind-node relative select-none ${ringClass}`}
-      style={{ width: W, height: H, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
@@ -106,7 +107,7 @@ const DocumentNode = memo(({ id, data, selected }) => {
       )}
 
       {/* Document SVG */}
-      <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${W} ${H}`} overflow="visible">
+      <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${nodeW} ${nodeH}`} overflow="visible">
         <path
           d={wavePath}
           fill="rgba(13,148,136,0.25)"

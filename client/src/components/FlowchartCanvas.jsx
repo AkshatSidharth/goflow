@@ -1063,6 +1063,7 @@ export default function FlowchartCanvas({
   const handleConnectStart = useCallback((_event, { nodeId }) => {
     connectingRef.current = { nodeId };
     connectSuccessRef.current = false;
+    setConnectionPopup(null);
   }, []);
 
   // Intercept successful connects to mark them as such
@@ -1360,6 +1361,7 @@ export default function FlowchartCanvas({
         onEdgeUpdateEnd={handleEdgeUpdateEnd}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
+        onPaneClick={() => setConnectionPopup(null)}
         onMove={(_, vp) => setViewport(vp)}
         snapToGrid={snapEnabled}
         snapGrid={[snapSize, snapSize]}

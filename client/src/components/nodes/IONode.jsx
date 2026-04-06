@@ -45,7 +45,7 @@ function RotationHandle({ id, data }) {
 }
 
 /** Parallelogram shape — represents Input/Output data operations */
-const IONode = memo(({ id, data, selected }) => {
+const IONode = memo(({ id, data, selected, style: rfStyle }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
   const inputRef = useRef(null);
@@ -84,10 +84,13 @@ const IONode = memo(({ id, data, selected }) => {
 
   const ringClass = selected ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-gray-900' : '';
 
+  const nodeW = rfStyle?.width  ?? 140;
+  const nodeH = rfStyle?.height ?? 40;
+
   return (
     <div
       className={`flowmind-node relative select-none ${ringClass}`}
-      style={{ width: 140, height: 40, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
@@ -105,12 +108,12 @@ const IONode = memo(({ id, data, selected }) => {
       {/* Parallelogram via SVG background */}
       <svg
         className="absolute inset-0 w-full h-full"
-        viewBox="0 0 140 40"
+        viewBox={`0 0 ${nodeW} ${nodeH}`}
         preserveAspectRatio="none"
         style={{ overflow: 'visible' }}
       >
         <polygon
-          points="14,2 138,2 126,38 2,38"
+          points={`${nodeW * 0.1},2 ${nodeW - 2},2 ${nodeW * 0.9},${nodeH - 2} 2,${nodeH - 2}`}
           fill="rgba(8,145,178,0.25)"
           stroke="rgba(6,182,212,0.7)"
           strokeWidth="1.5"
