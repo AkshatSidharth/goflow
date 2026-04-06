@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useMemo, useState } from 'react';
+import React, { useCallback, useRef, useMemo, useState, useEffect } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -224,6 +224,67 @@ function AddNodePanel({ onAdd, onClose }) {
   );
 }
 
+// ─── Connection popup (draw.io–style shape picker on empty-canvas drop) ──────
+
+function ConnectionPopup({ popup, onSelect, onClose }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  // Flip popup direction based on screen position so it stays in view
+  const left = popup.screenX > window.innerWidth  * 0.6 ? popup.screenX - 216 : popup.screenX + 12;
+  const top  = popup.screenY > window.innerHeight * 0.6 ? popup.screenY - 250 : popup.screenY - 12;
+
+  return (
+    <div
+      ref={ref}
+      style={{ position: 'fixed', left, top, zIndex: 1000 }}
+      className="w-52 bg-gray-900/98 backdrop-blur-md border border-indigo-500/40 rounded-2xl shadow-2xl shadow-black/70 p-3"
+    >
+      {/* Arrow pointer toward cursor */}
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+          <p className="text-gray-200 text-xs font-semibold">Connect to…</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-gray-600 hover:text-gray-400 transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1.5">
+        {NODE_TYPE_CONFIG.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => { onSelect(t.value, t.label); onClose(); }}
+            title={t.desc}
+            className={`
+              flex flex-col items-start px-2 py-1.5 rounded-lg border transition-all duration-100
+              ${t.bg} ${t.border} ${t.color}
+              hover:brightness-125 hover:shadow-sm active:scale-95
+            `}
+          >
+            <span className="text-base mb-0.5">{t.icon}</span>
+            <span className="text-[10px] font-semibold leading-none">{t.label}</span>
+            <span className="text-[9px] opacity-55 leading-none mt-0.5">{t.desc}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Export dropdown ──────────────────────────────────────────────────────────
 
 const EXPORT_FORMATS = [
@@ -441,17 +502,24 @@ export default function FlowchartCanvas({
   onConnect,
   onEdgeDelete,
   onReconnect,
+  onAddConnectedNode,
   onUndo,
   onRedo,
   canUndo,
   canRedo,
 }) {
   const reactFlowWrapper = useRef(null);
-  const { fitView } = useReactFlow();
+  const { fitView, project } = useReactFlow();
   const [isExporting, setIsExporting] = React.useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
+  const [connectionPopup, setConnectionPopup] = useState(null);
+
   // Track when an edge reconnect is in progress to prevent accidental deletes
   const edgeReconnectSuccessful = useRef(true);
+
+  // Track connection drag state for the empty-canvas popup
+  const connectingRef = useRef(null);
+  const connectSuccessRef = useRef(false);
 
   const hasContent = nodes && nodes.length > 0;
 
@@ -489,6 +557,42 @@ export default function FlowchartCanvas({
     })),
     [edges, onEdgeDelete]
   );
+
+  // ─── Connection-to-new-node popup handlers ──────────────────────────────────
+
+  const handleConnectStart = useCallback((_event, { nodeId }) => {
+    connectingRef.current = { nodeId };
+    connectSuccessRef.current = false;
+  }, []);
+
+  // Intercept successful connects to mark them as such
+  const handleConnect = useCallback((params) => {
+    connectSuccessRef.current = true;
+    onConnect?.(params);
+  }, [onConnect]);
+
+  const handleConnectEnd = useCallback((event) => {
+    // Only show popup if drag ended WITHOUT connecting to an existing node
+    if (connectSuccessRef.current || !connectingRef.current) return;
+
+    const bounds = reactFlowWrapper.current?.getBoundingClientRect();
+    if (!bounds) return;
+
+    const flowPos = project({
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top,
+    });
+
+    setConnectionPopup({
+      screenX: event.clientX,
+      screenY: event.clientY,
+      flowX: flowPos.x,
+      flowY: flowPos.y,
+      sourceNodeId: connectingRef.current.nodeId,
+    });
+
+    connectingRef.current = null;
+  }, [project]);
 
   // ─── Edge reconnect handlers ────────────────────────────────────────────────
 
@@ -626,7 +730,9 @@ export default function FlowchartCanvas({
         edges={enrichedEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        onConnect={handleConnect}
+        onConnectStart={handleConnectStart}
+        onConnectEnd={handleConnectEnd}
         onEdgeUpdate={handleEdgeUpdate}
         onEdgeUpdateStart={handleEdgeUpdateStart}
         onEdgeUpdateEnd={handleEdgeUpdateEnd}
@@ -670,6 +776,23 @@ export default function FlowchartCanvas({
       </ReactFlow>
 
       {!hasContent && <EmptyState />}
+
+      {/* Draw.io–style shape picker popup when drag-to-connect lands on empty canvas */}
+      {connectionPopup && (
+        <ConnectionPopup
+          popup={connectionPopup}
+          onSelect={(nodeType, defaultLabel) => {
+            onAddConnectedNode?.(
+              connectionPopup.sourceNodeId,
+              nodeType,
+              defaultLabel,
+              connectionPopup.flowX,
+              connectionPopup.flowY,
+            );
+          }}
+          onClose={() => setConnectionPopup(null)}
+        />
+      )}
     </div>
   );
 }

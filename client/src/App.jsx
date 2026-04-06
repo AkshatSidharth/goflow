@@ -191,6 +191,53 @@ export default function App() {
     pushHistory(newNodes, edges, newFlowchart);
   }, [nodes, edges, currentFlowchart, pushHistory, setNodes]);
 
+  /** Create a new node at flowX/flowY and connect it from sourceNodeId */
+  const handleAddConnectedNode = useCallback((sourceNodeId, nodeType, defaultLabel, flowX, flowY) => {
+    const newId = `manual-${Date.now()}`;
+    const rfType =
+      nodeType === 'decision' ? 'decision'
+      : nodeType === 'start' || nodeType === 'end' ? 'startEnd'
+      : nodeType === 'io' ? 'io'
+      : nodeType === 'database' ? 'database'
+      : nodeType === 'document' ? 'document'
+      : nodeType === 'hexagon' ? 'hexagon'
+      : 'process';
+
+    const newNode = {
+      id: newId,
+      type: rfType,
+      position: { x: flowX, y: flowY },
+      data: { label: defaultLabel, nodeType },
+    };
+
+    const newEdge = {
+      id: `e-${sourceNodeId}-${newId}-${Date.now()}`,
+      source: sourceNodeId,
+      target: newId,
+      type: 'deletable',
+      style: { stroke: '#64748b', strokeWidth: 2 },
+      markerEnd: { type: 'arrowclosed', color: '#64748b' },
+    };
+
+    const newNodes = [...nodes, newNode];
+    const newEdges = [...edges, newEdge];
+    const newFlowchart = currentFlowchart
+      ? {
+          ...currentFlowchart,
+          nodes: [...currentFlowchart.nodes, { id: newId, type: nodeType, text: defaultLabel }],
+          edges: [...currentFlowchart.edges, { from: sourceNodeId, to: newId, label: '' }],
+        }
+      : {
+          nodes: [{ id: newId, type: nodeType, text: defaultLabel }],
+          edges: [],
+        };
+
+    setNodes(newNodes);
+    setEdges(newEdges);
+    setCurrentFlowchart(newFlowchart);
+    pushHistory(newNodes, newEdges, newFlowchart);
+  }, [nodes, edges, currentFlowchart, pushHistory, setNodes, setEdges]);
+
   // ─── Chat / confirm / cancel ───────────────────────────────────────────────
 
   const handleConfirm = useCallback(() => {
@@ -281,6 +328,7 @@ export default function App() {
             onConnect={handleConnect}
             onEdgeDelete={handleEdgeDelete}
             onReconnect={handleReconnect}
+            onAddConnectedNode={handleAddConnectedNode}
             onUndo={undo}
             onRedo={redo}
             canUndo={canUndo}
