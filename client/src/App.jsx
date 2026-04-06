@@ -247,6 +247,7 @@ export default function App() {
       : nodeType === 'database' ? 'database'
       : nodeType === 'document' ? 'document'
       : nodeType === 'hexagon' ? 'hexagon'
+      : nodeType === 'group' ? 'group'
       : 'process';
 
     const newNode = {
@@ -266,6 +267,12 @@ export default function App() {
     pushHistory(newNodes, edges, newFlowchart);
   }, [nodes, edges, currentFlowchart, pushHistory, setNodes, setCurrentFlowchart]);
 
+  const handleNodeRotate = useCallback((nodeId, rotation) => {
+    setNodes((prev) =>
+      prev.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, rotation } } : n),
+    );
+  }, [setNodes]);
+
   const handleAddConnectedNode = useCallback((sourceNodeId, nodeType, defaultLabel, flowX, flowY) => {
     const newId = `manual-${Date.now()}`;
     const rfType =
@@ -275,6 +282,7 @@ export default function App() {
       : nodeType === 'database' ? 'database'
       : nodeType === 'document' ? 'document'
       : nodeType === 'hexagon' ? 'hexagon'
+      : nodeType === 'group' ? 'group'
       : 'process';
 
     const newNode = {
@@ -396,6 +404,7 @@ export default function App() {
             onEdgeDelete={handleEdgeDelete}
             onReconnect={handleReconnect}
             onAddConnectedNode={handleAddConnectedNode}
+            onNodeRotate={handleNodeRotate}
             onUndo={undo}
             onRedo={redo}
             canUndo={canUndo}

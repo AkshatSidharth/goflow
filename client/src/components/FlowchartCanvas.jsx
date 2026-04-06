@@ -8,9 +8,14 @@ import ReactFlow, {
   BaseEdge,
   EdgeLabelRenderer,
   getSmoothStepPath,
+  getBezierPath,
+  getStraightPath,
   addEdge,
   ConnectionMode,
+  Handle,
+  Position,
 } from 'reactflow';
+import { NodeResizer } from '@reactflow/node-resizer';
 import { toPng, toJpeg, toSvg } from 'html-to-image';
 import StartEndNode from './nodes/StartEndNode.jsx';
 import ProcessNode from './nodes/ProcessNode.jsx';
@@ -20,40 +25,168 @@ import DatabaseNode from './nodes/DatabaseNode.jsx';
 import DocumentNode from './nodes/DocumentNode.jsx';
 import HexagonNode from './nodes/HexagonNode.jsx';
 
+// ─── Helper: line-segment intersection for jump lines ────────────────────────
+function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+  const dxAB = bx - ax, dyAB = by - ay;
+  const dxCD = dx - cx, dyCD = dy - cy;
+  const denom = dxAB * dyCD - dyAB * dxCD;
+  if (Math.abs(denom) < 1e-10) return null;
+  const t = ((cx - ax) * dyCD - (cy - ay) * dxCD) / denom;
+  const u = ((cx - ax) * dyAB - (cy - ay) * dxAB) / denom;
+  if (t > 0.05 && t < 0.95 && u > 0.05 && u < 0.95) {
+    return { x: ax + t * dxAB, y: ay + t * dyAB };
+  }
+  return null;
+}
+
 // ─── Custom deletable + reconnectable edge ────────────────────────────────────
 
 function DeletableEdge({
   id, source, target,
   sourceX, sourceY, targetX, targetY,
   sourcePosition, targetPosition,
-  style, markerEnd, label, data,
+  style, markerEnd, label, data, selected,
 }) {
   const [hovered, setHovered] = useState(false);
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX, sourceY, sourcePosition,
-    targetX, targetY, targetPosition,
-  });
+  const { project, setEdges } = useReactFlow();
 
+  const connectorType = data?.connectorType || 'smoothstep';
+  const waypoints     = data?.waypoints     || [];
+  const jumpLines     = data?.jumpLines     ?? false;
+  const allEdgePaths  = data?.allEdgePaths  || [];
+
+  // ── Compute path through optional waypoints ──
+  const [edgePath, labelX, labelY] = useMemo(() => {
+    const base = { sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition };
+    if (waypoints.length === 0) {
+      if (connectorType === 'straight') return getStraightPath(base);
+      if (connectorType === 'bezier')   return getBezierPath(base);
+      if (connectorType === 'step')     return getSmoothStepPath({ ...base, borderRadius: 0 });
+      return getSmoothStepPath(base);
+    }
+    // Build polyline through waypoints
+    const pts = [{ x: sourceX, y: sourceY }, ...waypoints, { x: targetX, y: targetY }];
+    let d = `M ${pts[0].x},${pts[0].y}`;
+    if (connectorType === 'bezier') {
+      for (let i = 1; i < pts.length; i++) {
+        const p = pts[i - 1], q = pts[i];
+        d += ` Q ${(p.x + q.x) / 2},${p.y} ${q.x},${q.y}`;
+      }
+    } else {
+      for (let i = 1; i < pts.length; i++) d += ` L ${pts[i].x},${pts[i].y}`;
+    }
+    const mid = pts[Math.floor(pts.length / 2)];
+    return [d, mid.x, mid.y];
+  }, [sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, connectorType, waypoints]);
+
+  // ── Jump line arcs (straight segments only) ──
+  const jumpArcs = useMemo(() => {
+    if (!jumpLines || connectorType !== 'straight' || waypoints.length > 0) return [];
+    const crossings = [];
+    for (const other of allEdgePaths) {
+      if (other.id === id) continue;
+      const pt = segmentsIntersect(sourceX, sourceY, targetX, targetY,
+        other.sx, other.sy, other.tx, other.ty);
+      if (pt) crossings.push(pt);
+    }
+    return crossings;
+  }, [jumpLines, connectorType, waypoints, allEdgePaths, id, sourceX, sourceY, targetX, targetY]);
+
+  // Build final path with jump arcs
+  const finalPath = useMemo(() => {
+    if (jumpArcs.length === 0) return edgePath;
+    const R = 8;
+    const dir = { x: targetX - sourceX, y: targetY - sourceY };
+    const len = Math.sqrt(dir.x ** 2 + dir.y ** 2) || 1;
+    const ux = dir.x / len, uy = dir.y / len;
+    // Sort crossings by distance from source
+    const sorted = [...jumpArcs].sort((a, b) => {
+      const da = (a.x - sourceX) ** 2 + (a.y - sourceY) ** 2;
+      const db = (b.x - sourceX) ** 2 + (b.y - sourceY) ** 2;
+      return da - db;
+    });
+    let d = `M ${sourceX},${sourceY}`;
+    let prev = { x: sourceX, y: sourceY };
+    for (const c of sorted) {
+      const e1 = { x: c.x - ux * R, y: c.y - uy * R };
+      const e2 = { x: c.x + ux * R, y: c.y + uy * R };
+      d += ` L ${e1.x},${e1.y}`;
+      d += ` A ${R} ${R} 0 0 1 ${e2.x},${e2.y}`;
+      prev = e2;
+    }
+    d += ` L ${targetX},${targetY}`;
+    return d;
+  }, [edgePath, jumpArcs, sourceX, sourceY, targetX, targetY]);
+
+  // ── Delete handler ──
   const handleDelete = useCallback((e) => {
     e.stopPropagation();
     data?.onDelete?.(id, source, target);
   }, [id, source, target, data]);
 
+  // ── Add waypoint on double-click ──
+  const handleDoubleClick = useCallback((e) => {
+    e.stopPropagation();
+    const bounds = e.currentTarget.closest('.react-flow__pane')?.getBoundingClientRect()
+      || { left: 0, top: 0 };
+    const flowPt = project({ x: e.clientX - bounds.left, y: e.clientY - bounds.top });
+    setEdges(prev => prev.map(edge =>
+      edge.id === id
+        ? { ...edge, data: { ...edge.data, waypoints: [...(edge.data?.waypoints || []), flowPt] } }
+        : edge
+    ));
+  }, [id, project, setEdges]);
+
+  // ── Drag waypoint ──
+  const startDragWaypoint = useCallback((e, wpIdx) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const onMove = (me) => {
+      const paneEl = document.querySelector('.react-flow__pane');
+      const bounds = paneEl?.getBoundingClientRect() || { left: 0, top: 0 };
+      const fp = project({ x: me.clientX - bounds.left, y: me.clientY - bounds.top });
+      setEdges(prev => prev.map(edge => {
+        if (edge.id !== id) return edge;
+        const wps = [...(edge.data?.waypoints || [])];
+        wps[wpIdx] = fp;
+        return { ...edge, data: { ...edge.data, waypoints: wps } };
+      }));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [id, project, setEdges]);
+
+  // ── Remove waypoint on right-click ──
+  const removeWaypoint = useCallback((e, wpIdx) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEdges(prev => prev.map(edge =>
+      edge.id === id
+        ? { ...edge, data: { ...edge.data, waypoints: (edge.data?.waypoints || []).filter((_, i) => i !== wpIdx) } }
+        : edge
+    ));
+  }, [id, setEdges]);
+
   return (
     <>
-      {/* Wide transparent hit area for hover */}
+      {/* Wide transparent hit area */}
       <path
-        d={edgePath}
+        d={finalPath}
         fill="none"
         stroke="transparent"
         strokeWidth={20}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        onDoubleClick={handleDoubleClick}
         style={{ cursor: 'pointer' }}
       />
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+      <BaseEdge path={finalPath} markerEnd={markerEnd} style={style} />
 
-      {/* Visible grab handles at source + target — appear on hover so user knows where to drag */}
+      {/* Endpoint grab handles */}
       {hovered && (
         <>
           <circle cx={sourceX} cy={sourceY} r={6} fill="#6366f1" stroke="#0f172a" strokeWidth={2} style={{ pointerEvents: 'none' }} />
@@ -61,26 +194,32 @@ function DeletableEdge({
         </>
       )}
 
+      {/* Waypoint handles */}
+      {(hovered || selected) && waypoints.map((wp, i) => (
+        <circle
+          key={i}
+          cx={wp.x} cy={wp.y} r={5}
+          fill="#f59e0b" stroke="#0f172a" strokeWidth={2}
+          style={{ cursor: 'grab' }}
+          onMouseDown={(e) => startDragWaypoint(e, i)}
+          onContextMenu={(e) => removeWaypoint(e, i)}
+        />
+      ))}
+
       <EdgeLabelRenderer>
-        {/* Edge label */}
         {label && (
           <div
-            style={{
-              position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              pointerEvents: 'none',
-            }}
+            style={{ position: 'absolute', transform: `translate(-50%,-50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'none' }}
             className="bg-slate-800/80 text-gray-300 text-[10px] px-1.5 py-0.5 rounded border border-slate-600/60"
           >
             {label}
           </div>
         )}
 
-        {/* Delete button — shown on hover */}
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + (label ? 16 : 0)}px)`,
+            transform: `translate(-50%,-50%) translate(${labelX}px,${labelY + (label ? 16 : 0)}px)`,
             pointerEvents: 'all',
             opacity: hovered ? 1 : 0,
             transition: 'opacity 150ms',
@@ -104,6 +243,73 @@ function DeletableEdge({
   );
 }
 
+// ─── Group / Container node ───────────────────────────────────────────────────
+
+function GroupNode({ id, data, selected }) {
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [labelVal, setLabelVal] = useState(data.label || 'Group');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editingLabel) inputRef.current?.focus();
+  }, [editingLabel]);
+
+  const save = () => {
+    const v = labelVal.trim();
+    if (v && v !== data.label) data.onLabelChange?.(id, v);
+    setEditingLabel(false);
+  };
+
+  return (
+    <div
+      className={`relative w-full h-full rounded-xl select-none ${selected ? 'ring-2 ring-indigo-400/60' : ''}`}
+      style={{ background: 'rgba(99,102,241,0.04)', border: '2px dashed rgba(99,102,241,0.35)', minWidth: 200, minHeight: 120 }}
+      onDoubleClick={(e) => { e.stopPropagation(); setEditingLabel(true); }}
+    >
+      <NodeResizer
+        isVisible={selected}
+        minWidth={160}
+        minHeight={100}
+        handleStyle={{ width: 8, height: 8, borderRadius: 2, background: '#0f172a', border: '2px solid #6366f1' }}
+        lineStyle={{ border: '1.5px dashed rgba(99,102,241,0.5)' }}
+      />
+
+      {/* Label */}
+      <div className="absolute top-2 left-3">
+        {editingLabel ? (
+          <input
+            ref={inputRef}
+            value={labelVal}
+            onChange={(e) => setLabelVal(e.target.value)}
+            onBlur={save}
+            onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditingLabel(false); }}
+            className="bg-transparent text-indigo-300 text-xs font-semibold outline-none border-b border-indigo-500 nodrag"
+          />
+        ) : (
+          <span className="text-indigo-400/70 text-xs font-semibold">{data.label || 'Group'}</span>
+        )}
+      </div>
+
+      {/* Delete button */}
+      {selected && (
+        <button
+          onClick={(e) => { e.stopPropagation(); data.onDelete?.(id); }}
+          className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 border border-red-400/60 flex items-center justify-center text-white font-bold transition-colors nodrag shadow-sm"
+          style={{ fontSize: 13, lineHeight: 1, zIndex: 10 }}
+        >×</button>
+      )}
+
+      {/* Bidirectional handles */}
+      {[Position.Top, Position.Bottom, Position.Left, Position.Right].map((pos) => (
+        <React.Fragment key={pos}>
+          <Handle type="source" position={pos} id={`${pos}-s`} style={{ background: '#6366f1', width: 8, height: 8, border: '2px solid #0f172a' }} />
+          <Handle type="target" position={pos} id={`${pos}-t`} style={{ background: '#6366f1', width: 8, height: 8, border: '2px solid #0f172a' }} />
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
 const nodeTypes = {
   startEnd: StartEndNode,
   process: ProcessNode,
@@ -112,6 +318,7 @@ const nodeTypes = {
   database: DatabaseNode,
   document: DocumentNode,
   hexagon: HexagonNode,
+  group: GroupNode,
 };
 
 const edgeTypes = {
@@ -524,7 +731,7 @@ function SettingsToggle({ label, checked, onChange }) {
   );
 }
 
-function CanvasSettingsPanel({ gridVisible, onGridToggle, gridStyle, onGridStyleChange, snapEnabled, onSnapToggle, snapSize, onSnapSizeChange, pageMode, onPageModeChange, onClose }) {
+function CanvasSettingsPanel({ gridVisible, onGridToggle, gridStyle, onGridStyleChange, snapEnabled, onSnapToggle, snapSize, onSnapSizeChange, pageMode, onPageModeChange, connectorType, onConnectorTypeChange, jumpLines, onJumpLinesToggle, onClose }) {
   return (
     <div className="absolute top-14 right-3 z-40 w-60 bg-gray-900/98 backdrop-blur-md border border-gray-700/80 rounded-2xl shadow-2xl shadow-black/60 p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -580,6 +787,27 @@ function CanvasSettingsPanel({ gridVisible, onGridToggle, gridStyle, onGridStyle
         )}
       </div>
 
+      {/* Connector type */}
+      <div className="space-y-2">
+        <p className="text-gray-600 text-[10px] uppercase tracking-wider font-semibold">Connectors</p>
+        <div className="grid grid-cols-2 gap-1">
+          {[
+            { id: 'smoothstep', label: 'Smooth' },
+            { id: 'step',       label: 'Orthogonal' },
+            { id: 'bezier',     label: 'Curved' },
+            { id: 'straight',   label: 'Straight' },
+          ].map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => onConnectorTypeChange(id)}
+              className={`px-2 py-1.5 rounded-lg text-[10px] font-medium border transition-colors
+                ${connectorType === id ? 'bg-indigo-600/30 border-indigo-500/60 text-indigo-200' : 'bg-gray-800/60 border-gray-700/60 text-gray-400 hover:border-gray-600'}`}
+            >{label}</button>
+          ))}
+        </div>
+        <SettingsToggle label="Jump lines at crossings" checked={jumpLines} onChange={onJumpLinesToggle} />
+      </div>
+
       {/* View mode */}
       <div className="space-y-2">
         <p className="text-gray-600 text-[10px] uppercase tracking-wider font-semibold">View Mode</p>
@@ -594,9 +822,7 @@ function CanvasSettingsPanel({ gridVisible, onGridToggle, gridStyle, onGridStyle
             className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs transition-colors text-left
               ${pageMode === id ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/40' : 'text-gray-400 hover:bg-gray-800 border border-transparent'}`}
           >
-            <span>{icon}</span>
-            <span>{label}</span>
-            {pageMode === id && <svg className="w-3 h-3 ml-auto text-indigo-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+            <span>{icon}</span><span>{label}</span>
           </button>
         ))}
       </div>
@@ -734,6 +960,7 @@ export default function FlowchartCanvas({
   onEdgeDelete,
   onReconnect,
   onAddConnectedNode,
+  onNodeRotate,
   onUndo,
   onRedo,
   canUndo,
@@ -760,6 +987,8 @@ export default function FlowchartCanvas({
   const [snapEnabled, setSnapEnabled] = useState(false);
   const [snapSize, setSnapSize] = useState(20);
   const [pageMode, setPageMode] = useState('infinite');
+  const [connectorType, setConnectorType] = useState('smoothstep'); // 'smoothstep'|'straight'|'bezier'|'step'
+  const [jumpLines, setJumpLines] = useState(false);
 
   // ─── Viewport tracking (for page background + smart guides) ──────────────
   const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
@@ -795,20 +1024,38 @@ export default function FlowchartCanvas({
         ...n.data,
         onLabelChange: onNodeLabelChange,
         onDelete: onNodeDelete,
+        onRotate: onNodeRotate,
       },
     })),
-    [nodes, onNodeLabelChange, onNodeDelete]
+    [nodes, onNodeLabelChange, onNodeDelete, onNodeRotate]
   );
 
-  // Inject delete callback + make edges reconnectable
+  // Precompute straight-edge endpoints for jump line intersection checks
+  const straightEdgePaths = useMemo(() => {
+    if (!jumpLines) return [];
+    return edges.map((e) => ({
+      id: e.id,
+      sx: e.__rf?.sourceX ?? 0,
+      sy: e.__rf?.sourceY ?? 0,
+      tx: e.__rf?.targetX ?? 0,
+      ty: e.__rf?.targetY ?? 0,
+    }));
+  }, [edges, jumpLines]);
+
+  // Inject delete callback + connector type + jump lines + waypoint data
   const enrichedEdges = useMemo(() =>
     edges.map((e) => ({
       ...e,
       type: 'deletable',
-
-      data: { ...e.data, onDelete: onEdgeDelete },
+      data: {
+        ...e.data,
+        onDelete: onEdgeDelete,
+        connectorType: e.data?.connectorType ?? connectorType,
+        jumpLines,
+        allEdgePaths: straightEdgePaths,
+      },
     })),
-    [edges, onEdgeDelete]
+    [edges, onEdgeDelete, connectorType, jumpLines, straightEdgePaths]
   );
 
   // ─── Connection-to-new-node popup handlers ──────────────────────────────────
@@ -1078,6 +1325,10 @@ export default function FlowchartCanvas({
           onSnapSizeChange={setSnapSize}
           pageMode={pageMode}
           onPageModeChange={setPageMode}
+          connectorType={connectorType}
+          onConnectorTypeChange={setConnectorType}
+          jumpLines={jumpLines}
+          onJumpLinesToggle={setJumpLines}
           onClose={() => setShowSettings(false)}
         />
       )}

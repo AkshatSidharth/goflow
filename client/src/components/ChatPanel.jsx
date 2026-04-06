@@ -104,6 +104,15 @@ const PALETTE_SHAPES = [
     ),
     color: 'text-orange-300', activeBg: 'bg-orange-900/50', activeBorder: 'border-orange-500',
   },
+  {
+    type: 'group', label: 'Container', desc: 'Group / swim lane',
+    preview: (
+      <svg viewBox="0 0 80 34" className="w-full h-8">
+        <rect x="3" y="3" width="74" height="28" rx="4" fill="rgba(99,102,241,0.15)" stroke="rgba(99,102,241,0.6)" strokeWidth="1.5" strokeDasharray="4,2" />
+      </svg>
+    ),
+    color: 'text-indigo-300', activeBg: 'bg-indigo-900/50', activeBorder: 'border-indigo-500',
+  },
 ];
 
 // ─── Language picker ──────────────────────────────────────────────────────────

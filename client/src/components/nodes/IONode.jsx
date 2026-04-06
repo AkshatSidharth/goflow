@@ -1,11 +1,56 @@
 import React, { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { Handle, Position } from 'reactflow';
+import { NodeResizer } from '@reactflow/node-resizer';
+
+function RotationHandle({ id, data }) {
+  const handleMouseDown = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const nodeEl = e.currentTarget.closest('.react-flow__node');
+    if (!nodeEl) return;
+    const rect = nodeEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const onMove = (me) => {
+      const angle = Math.atan2(me.clientY - cy, me.clientX - cx) * (180 / Math.PI) + 90;
+      data.onRotate?.(id, Math.round(angle));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      className="nodrag absolute"
+      style={{
+        top: -28, left: '50%', transform: 'translateX(-50%)',
+        width: 16, height: 16, borderRadius: '50%',
+        background: '#0f172a', border: '2px solid #6366f1',
+        cursor: 'crosshair', zIndex: 10, display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+      }}
+      title="Rotate"
+    >
+      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5">
+        <path d="M1 4v6h6M23 20v-6h-6" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </div>
+  );
+}
 
 /** Parallelogram shape — represents Input/Output data operations */
 const IONode = memo(({ id, data, selected }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(data.label);
   const inputRef = useRef(null);
+
+  const rotation = data.rotation || 0;
 
   useEffect(() => {
     if (isEditing) { inputRef.current?.focus(); inputRef.current?.select(); }
@@ -42,9 +87,21 @@ const IONode = memo(({ id, data, selected }) => {
   return (
     <div
       className={`flowmind-node relative select-none ${ringClass}`}
-      style={{ width: 140, height: 40, cursor: isEditing ? 'text' : 'default' }}
+      style={{ width: 140, height: 40, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
       onDoubleClick={handleDoubleClick}
     >
+      <NodeResizer
+        isVisible={selected}
+        minWidth={80}
+        minHeight={30}
+        handleStyle={{ width: 8, height: 8, borderRadius: 2, background: '#0f172a', border: '2px solid #6366f1' }}
+        lineStyle={{ border: '1.5px dashed rgba(99,102,241,0.6)' }}
+      />
+
+      {selected && !isEditing && (
+        <RotationHandle id={id} data={data} />
+      )}
+
       {/* Parallelogram via SVG background */}
       <svg
         className="absolute inset-0 w-full h-full"
