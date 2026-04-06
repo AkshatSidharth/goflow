@@ -755,7 +755,7 @@ export default function FlowchartCanvas({
 
   // ─── Canvas settings ──────────────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false);
-  const [gridVisible, setGridVisible] = useState(true);
+  const [gridVisible, setGridVisible] = useState(false);
   const [gridStyle, setGridStyle] = useState('lines'); // 'lines' | 'dots' | 'cross'
   const [snapEnabled, setSnapEnabled] = useState(false);
   const [snapSize, setSnapSize] = useState(20);
@@ -1046,26 +1046,24 @@ export default function FlowchartCanvas({
           </div>
         </div>
       )}
-      {/* Toolbar */}
-      {hasContent && (
-        <div className="canvas-toolbar">
-          <CanvasToolbar
-            nodeCount={nodes.length}
-            edgeCount={edges.length}
-            onExport={handleExport}
-            isExporting={isExporting}
-            detectedLanguage={detectedLanguage}
-            onAddNodeClick={() => setShowAddPanel((v) => !v)}
-            showAddPanel={showAddPanel}
-            onUndo={onUndo}
-            onRedo={onRedo}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onSettingsClick={() => setShowSettings((v) => !v)}
-            showSettings={showSettings}
-          />
-        </div>
-      )}
+      {/* Toolbar — always visible */}
+      <div className="canvas-toolbar">
+        <CanvasToolbar
+          nodeCount={nodes.length}
+          edgeCount={edges.length}
+          onExport={handleExport}
+          isExporting={isExporting}
+          detectedLanguage={detectedLanguage}
+          onAddNodeClick={() => setShowAddPanel((v) => !v)}
+          showAddPanel={showAddPanel}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onSettingsClick={() => setShowSettings((v) => !v)}
+          showSettings={showSettings}
+        />
+      </div>
 
       {/* Canvas settings panel */}
       {showSettings && (
