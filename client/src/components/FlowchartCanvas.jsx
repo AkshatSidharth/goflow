@@ -470,7 +470,9 @@ function PageBackground({ mode, viewport }) {
       className="absolute pointer-events-none"
       style={{ left: vpX, top: vpY, width: size.w * zoom, height: size.h * zoom, zIndex: 1 }}
     >
-      <div className="w-full h-full border-2 border-slate-500/40 bg-slate-900/20 shadow-2xl" />
+      <div className="w-full h-full border-2 border-indigo-500/40"
+        style={{ boxShadow: '0 0 0 9999px rgba(15,23,42,0.40)' }}
+      />
       <span className="absolute -top-5 left-0 text-[10px] text-slate-500 font-mono select-none">
         {size.label}
       </span>
