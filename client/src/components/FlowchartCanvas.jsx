@@ -458,7 +458,7 @@ export default function FlowchartCanvas({
   React.useEffect(() => {
     if (hasContent) {
       const timer = setTimeout(() => {
-        fitView({ padding: 0.15, duration: 400 });
+        fitView({ padding: 0.2, duration: 400, maxZoom: 1 });
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -634,7 +634,7 @@ export default function FlowchartCanvas({
         defaultEdgeOptions={defaultEdgeOptions}
         connectionMode={ConnectionMode.Loose}
         fitView
-        fitViewOptions={{ padding: 0.15 }}
+        fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
         minZoom={0.1}
         maxZoom={2.5}
         deleteKeyCode={null}

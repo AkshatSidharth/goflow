@@ -59,7 +59,7 @@ const StartEndNode = memo(({ id, data, selected }) => {
       className={`
         flowmind-node
         relative flex items-center justify-center
-        min-w-[120px] max-w-[180px] h-[44px] px-5
+        min-w-[90px] max-w-[150px] h-[34px] px-4
         rounded-full
         bg-gradient-to-r ${gradientClass}
         border ${borderClass}

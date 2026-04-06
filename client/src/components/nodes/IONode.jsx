@@ -42,18 +42,18 @@ const IONode = memo(({ id, data, selected }) => {
   return (
     <div
       className={`flowmind-node relative select-none ${ringClass}`}
-      style={{ width: 180, height: 52, cursor: isEditing ? 'text' : 'default' }}
+      style={{ width: 140, height: 40, cursor: isEditing ? 'text' : 'default' }}
       onDoubleClick={handleDoubleClick}
     >
       {/* Parallelogram via SVG background */}
       <svg
         className="absolute inset-0 w-full h-full"
-        viewBox="0 0 180 52"
+        viewBox="0 0 140 40"
         preserveAspectRatio="none"
         style={{ overflow: 'visible' }}
       >
         <polygon
-          points="18,2 178,2 162,50 2,50"
+          points="14,2 138,2 126,38 2,38"
           fill="rgba(8,145,178,0.25)"
           stroke="rgba(6,182,212,0.7)"
           strokeWidth="1.5"

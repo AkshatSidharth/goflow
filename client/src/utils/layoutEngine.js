@@ -5,14 +5,14 @@ import dagre from 'dagre';
  * These match the visual sizes of our custom nodes.
  */
 const NODE_DIMENSIONS = {
-  start:    { width: 160, height: 56 },
-  end:      { width: 160, height: 56 },
-  process:  { width: 200, height: 64 },
-  decision: { width: 160, height: 80 },
-  io:       { width: 180, height: 52 },
-  database: { width: 140, height: 80 },
-  document: { width: 180, height: 72 },
-  hexagon:  { width: 160, height: 64 },
+  start:    { width: 150, height: 40 },
+  end:      { width: 150, height: 40 },
+  process:  { width: 160, height: 48 },
+  decision: { width: 110, height: 110 },
+  io:       { width: 140, height: 40 },
+  database: { width: 110, height: 62 },
+  document: { width: 150, height: 56 },
+  hexagon:  { width: 130, height: 50 },
 };
 
 const DEFAULT_DIMENSIONS = { width: 200, height: 64 };

@@ -38,7 +38,7 @@ const DatabaseNode = memo(({ id, data, selected }) => {
   }, [data, id]);
 
   const ringClass = selected ? 'ring-2 ring-violet-400 ring-offset-1 ring-offset-gray-900' : '';
-  const W = 140, H = 80, rx = 70, ry = 12;
+  const W = 110, H = 62, rx = 55, ry = 10;
 
   return (
     <div

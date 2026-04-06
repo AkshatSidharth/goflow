@@ -45,8 +45,8 @@ const DecisionNode = memo(({ id, data, selected }) => {
     ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-900'
     : '';
 
-  const containerSize = 160;
-  const innerSize = 110;
+  const containerSize = 110;
+  const innerSize = 76;
 
   return (
     <div

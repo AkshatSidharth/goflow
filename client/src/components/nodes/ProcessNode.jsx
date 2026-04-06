@@ -51,7 +51,7 @@ const ProcessNode = memo(({ id, data, selected }) => {
       className={`
         flowmind-node
         relative flex items-center justify-center
-        min-w-[160px] max-w-[220px] min-h-[52px] px-4 py-3
+        min-w-[120px] max-w-[180px] min-h-[40px] px-3 py-2
         rounded-xl
         bg-slate-800/90 backdrop-blur-sm
         border border-slate-600/60

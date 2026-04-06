@@ -38,7 +38,7 @@ const HexagonNode = memo(({ id, data, selected }) => {
   }, [data, id]);
 
   const ringClass = selected ? 'ring-2 ring-orange-400 ring-offset-1 ring-offset-gray-900' : '';
-  const W = 160, H = 64;
+  const W = 130, H = 50;
   // Flat-top hexagon points
   const pts = [
     `${W * 0.22},2`,

@@ -38,9 +38,9 @@ const DocumentNode = memo(({ id, data, selected }) => {
   }, [data, id]);
 
   const ringClass = selected ? 'ring-2 ring-teal-400 ring-offset-1 ring-offset-gray-900' : '';
-  const W = 180, H = 72;
+  const W = 150, H = 56;
   // Wave path: flat sides + top, wavy bottom
-  const wavePath = `M 1,1 H ${W - 1} V ${H - 14} Q ${W * 0.875},${H + 2} ${W * 0.75},${H - 14} Q ${W * 0.625},${H - 28} ${W * 0.5},${H - 14} Q ${W * 0.375},${H} ${W * 0.25},${H - 14} Q ${W * 0.125},${H - 28} 1,${H - 14} Z`;
+  const wavePath = `M 1,1 H ${W - 1} V ${H - 12} Q ${W * 0.875},${H + 2} ${W * 0.75},${H - 12} Q ${W * 0.625},${H - 24} ${W * 0.5},${H - 12} Q ${W * 0.375},${H} ${W * 0.25},${H - 12} Q ${W * 0.125},${H - 24} 1,${H - 12} Z`;
 
   return (
     <div
