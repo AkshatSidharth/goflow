@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { ReactFlowProvider, useNodesState, useEdgesState, addEdge, updateEdge } from 'reactflow';
 import ChatPanel from './components/ChatPanel.jsx';
 import FlowchartCanvas from './components/FlowchartCanvas.jsx';
@@ -6,25 +6,61 @@ import { chatMessage, editFlowchart } from './services/api.js';
 import { convertAndLayout } from './utils/layoutEngine.js';
 import { detectLanguage } from './utils/validator.js';
 
+// ─── Page helpers ─────────────────────────────────────────────────────────────
+
+let _pageSeq = 1;
+const newPage = (name) => ({
+  id: `page-${Date.now()}-${_pageSeq++}`,
+  name: name || `Page ${_pageSeq - 1}`,
+  nodes: [],
+  edges: [],
+  flowchart: null,
+});
+
 export default function App() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentFlowchart, setCurrentFlowchart] = useState(null);
   const [pendingFlowchart, setPendingFlowchart] = useState(null);
   const [detectedLanguage, setDetectedLanguage] = useState('EN');
 
+  // ─── Multi-page state ──────────────────────────────────────────────────────
+  const [pages, setPages] = useState(() => {
+    const p = newPage('Page 1');
+    return [p];
+  });
+  const [currentPageId, setCurrentPageId] = useState(() => pages[0].id);
+
+  const currentPage = useMemo(
+    () => pages.find((p) => p.id === currentPageId) || pages[0],
+    [pages, currentPageId],
+  );
+  const currentFlowchart = currentPage?.flowchart ?? null;
+
+  // Helper: update the current page's flowchart inside the pages array
+  const setCurrentFlowchart = useCallback((fc) => {
+    setPages((prev) =>
+      prev.map((p) => (p.id === currentPageId ? { ...p, flowchart: fc } : p)),
+    );
+  }, [currentPageId]);
+
+  // ─── React Flow nodes/edges state ─────────────────────────────────────────
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  // ─── Undo / Redo history ───────────────────────────────────────────────────
-  // Each entry: { nodes, edges, flowchart }
+  // ─── Undo / Redo history ──────────────────────────────────────────────────
   const historyRef = useRef([]);
   const historyIndexRef = useRef(-1);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
+  const resetHistory = useCallback(() => {
+    historyRef.current = [];
+    historyIndexRef.current = -1;
+    setCanUndo(false);
+    setCanRedo(false);
+  }, []);
+
   const pushHistory = useCallback((ns, es, fc) => {
-    // Drop any forward history when a new action is taken
     historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
     historyRef.current.push({ nodes: ns, edges: es, flowchart: fc });
     if (historyRef.current.length > 60) historyRef.current.shift();
@@ -42,7 +78,7 @@ export default function App() {
     setCurrentFlowchart(snap.flowchart);
     setCanUndo(historyIndexRef.current > 0);
     setCanRedo(true);
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, setCurrentFlowchart]);
 
   const redo = useCallback(() => {
     if (historyIndexRef.current >= historyRef.current.length - 1) return;
@@ -53,9 +89,8 @@ export default function App() {
     setCurrentFlowchart(snap.flowchart);
     setCanUndo(true);
     setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, setCurrentFlowchart]);
 
-  // Keyboard shortcuts: Ctrl+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo
   useEffect(() => {
     const onKey = (e) => {
       const mod = e.ctrlKey || e.metaKey;
@@ -67,6 +102,56 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [undo, redo]);
 
+  // ─── Page management ──────────────────────────────────────────────────────
+
+  const addPage = useCallback(() => {
+    const p = newPage(`Page ${pages.length + 1}`);
+    setPages((prev) => [
+      ...prev.map((pg) => (pg.id === currentPageId ? { ...pg, nodes, edges } : pg)),
+      p,
+    ]);
+    setNodes([]);
+    setEdges([]);
+    setCurrentPageId(p.id);
+    resetHistory();
+  }, [pages.length, currentPageId, nodes, edges, setNodes, setEdges, resetHistory]);
+
+  const switchPage = useCallback((pageId) => {
+    if (pageId === currentPageId) return;
+    // Save current nodes/edges into the pages array before switching
+    setPages((prev) =>
+      prev.map((pg) => (pg.id === currentPageId ? { ...pg, nodes, edges } : pg)),
+    );
+    // Load target page
+    const target = pages.find((p) => p.id === pageId);
+    if (target) {
+      setNodes(target.nodes);
+      setEdges(target.edges);
+    }
+    setCurrentPageId(pageId);
+    resetHistory();
+  }, [currentPageId, nodes, edges, pages, setNodes, setEdges, resetHistory]);
+
+  const deletePage = useCallback((pageId) => {
+    if (pages.length <= 1) return;
+    const idx = pages.findIndex((p) => p.id === pageId);
+    const remaining = pages.filter((p) => p.id !== pageId);
+    setPages(remaining);
+    if (pageId === currentPageId) {
+      const next = remaining[Math.max(0, idx - 1)];
+      setNodes(next.nodes);
+      setEdges(next.edges);
+      setCurrentPageId(next.id);
+      resetHistory();
+    }
+  }, [pages, currentPageId, setNodes, setEdges, resetHistory]);
+
+  const renamePage = useCallback((pageId, name) => {
+    setPages((prev) =>
+      prev.map((p) => (p.id === pageId ? { ...p, name } : p)),
+    );
+  }, []);
+
   // ─── Flowchart application ─────────────────────────────────────────────────
 
   const applyFlowchart = useCallback((flowchartData) => {
@@ -75,49 +160,42 @@ export default function App() {
     setNodes(rfNodes);
     setEdges(rfEdges);
     pushHistory(rfNodes, rfEdges, flowchartData);
-  }, [setNodes, setEdges, pushHistory]);
+  }, [setNodes, setEdges, pushHistory, setCurrentFlowchart]);
 
   const addMessage = useCallback((role, content, type = 'text') => {
-    setMessages((prev) => [
-      ...prev,
-      { role, content, type, timestamp: new Date() },
-    ]);
+    setMessages((prev) => [...prev, { role, content, type, timestamp: new Date() }]);
   }, []);
 
-  // ─── Canvas handlers (each computes the new state and pushes history) ──────
+  // ─── Canvas handlers ───────────────────────────────────────────────────────
 
-  /** Rename a node label */
   const handleNodeLabelChange = useCallback((nodeId, newLabel) => {
     const newNodes = nodes.map((n) =>
-      n.id === nodeId ? { ...n, data: { ...n.data, label: newLabel } } : n
+      n.id === nodeId ? { ...n, data: { ...n.data, label: newLabel } } : n,
     );
-    const newFlowchart = currentFlowchart ? {
-      ...currentFlowchart,
-      nodes: currentFlowchart.nodes.map((n) =>
-        n.id === nodeId ? { ...n, text: newLabel } : n
-      ),
-    } : null;
+    const newFlowchart = currentFlowchart
+      ? { ...currentFlowchart, nodes: currentFlowchart.nodes.map((n) => n.id === nodeId ? { ...n, text: newLabel } : n) }
+      : null;
     setNodes(newNodes);
     setCurrentFlowchart(newFlowchart);
     pushHistory(newNodes, edges, newFlowchart);
-  }, [nodes, edges, currentFlowchart, pushHistory, setNodes]);
+  }, [nodes, edges, currentFlowchart, pushHistory, setNodes, setCurrentFlowchart]);
 
-  /** Delete a node and its connected edges */
   const handleNodeDelete = useCallback((nodeId) => {
     const newNodes = nodes.filter((n) => n.id !== nodeId);
     const newEdges = edges.filter((e) => e.source !== nodeId && e.target !== nodeId);
-    const newFlowchart = currentFlowchart ? {
-      ...currentFlowchart,
-      nodes: currentFlowchart.nodes.filter((n) => n.id !== nodeId),
-      edges: currentFlowchart.edges.filter((e) => e.from !== nodeId && e.to !== nodeId),
-    } : null;
+    const newFlowchart = currentFlowchart
+      ? {
+          ...currentFlowchart,
+          nodes: currentFlowchart.nodes.filter((n) => n.id !== nodeId),
+          edges: currentFlowchart.edges.filter((e) => e.from !== nodeId && e.to !== nodeId),
+        }
+      : null;
     setNodes(newNodes);
     setEdges(newEdges);
     setCurrentFlowchart(newFlowchart);
     pushHistory(newNodes, newEdges, newFlowchart);
-  }, [nodes, edges, currentFlowchart, pushHistory, setNodes, setEdges]);
+  }, [nodes, edges, currentFlowchart, pushHistory, setNodes, setEdges, setCurrentFlowchart]);
 
-  /** Connect two nodes by dragging from one handle to another */
   const handleConnect = useCallback((params) => {
     const newEdge = {
       ...params,
@@ -126,50 +204,45 @@ export default function App() {
       markerEnd: { type: 'arrowclosed', color: '#64748b' },
     };
     const newEdges = addEdge(newEdge, edges);
-    const newFlowchart = currentFlowchart ? {
-      ...currentFlowchart,
-      edges: [...currentFlowchart.edges, { from: params.source, to: params.target, label: '' }],
-    } : null;
+    const newFlowchart = currentFlowchart
+      ? { ...currentFlowchart, edges: [...currentFlowchart.edges, { from: params.source, to: params.target, label: '' }] }
+      : null;
     setEdges(newEdges);
     setCurrentFlowchart(newFlowchart);
     pushHistory(nodes, newEdges, newFlowchart);
-  }, [nodes, edges, currentFlowchart, pushHistory, setEdges]);
+  }, [nodes, edges, currentFlowchart, pushHistory, setEdges, setCurrentFlowchart]);
 
-  /** Delete an edge */
   const handleEdgeDelete = useCallback((edgeId, source, target) => {
     const newEdges = edges.filter((e) => e.id !== edgeId);
-    const newFlowchart = currentFlowchart ? {
-      ...currentFlowchart,
-      edges: currentFlowchart.edges.filter((e) => !(e.from === source && e.to === target)),
-    } : null;
+    const newFlowchart = currentFlowchart
+      ? { ...currentFlowchart, edges: currentFlowchart.edges.filter((e) => !(e.from === source && e.to === target)) }
+      : null;
     setEdges(newEdges);
     setCurrentFlowchart(newFlowchart);
     pushHistory(nodes, newEdges, newFlowchart);
-  }, [nodes, edges, currentFlowchart, pushHistory, setEdges]);
+  }, [nodes, edges, currentFlowchart, pushHistory, setEdges, setCurrentFlowchart]);
 
-  /** Reconnect an edge by dragging its endpoint to a new node/handle */
   const handleReconnect = useCallback((oldEdge, newConnection) => {
     const newEdges = updateEdge(oldEdge, newConnection, edges);
-    const newFlowchart = currentFlowchart ? {
-      ...currentFlowchart,
-      edges: [
-        ...currentFlowchart.edges.filter(
-          (e) => !(e.from === oldEdge.source && e.to === oldEdge.target)
-        ),
-        { from: newConnection.source, to: newConnection.target, label: oldEdge.label || '' },
-      ],
-    } : null;
+    const newFlowchart = currentFlowchart
+      ? {
+          ...currentFlowchart,
+          edges: [
+            ...currentFlowchart.edges.filter((e) => !(e.from === oldEdge.source && e.to === oldEdge.target)),
+            { from: newConnection.source, to: newConnection.target, label: oldEdge.label || '' },
+          ],
+        }
+      : null;
     setEdges(newEdges);
     setCurrentFlowchart(newFlowchart);
     pushHistory(nodes, newEdges, newFlowchart);
-  }, [nodes, edges, currentFlowchart, pushHistory, setEdges]);
+  }, [nodes, edges, currentFlowchart, pushHistory, setEdges, setCurrentFlowchart]);
 
-  /** Add a new node manually to the canvas (posX/posY optional — from drag-drop or popup) */
   const handleAddNode = useCallback((nodeType, label, posX, posY) => {
     const newId = `manual-${Date.now()}`;
     const rfType =
       nodeType === 'decision' ? 'decision'
-      : nodeType === 'start' || nodeType === 'end' ? 'startEnd'
+      : (nodeType === 'start' || nodeType === 'end') ? 'startEnd'
       : nodeType === 'io' ? 'io'
       : nodeType === 'database' ? 'database'
       : nodeType === 'document' ? 'document'
@@ -191,14 +264,13 @@ export default function App() {
     setNodes(newNodes);
     setCurrentFlowchart(newFlowchart);
     pushHistory(newNodes, edges, newFlowchart);
-  }, [nodes, edges, currentFlowchart, pushHistory, setNodes]);
+  }, [nodes, edges, currentFlowchart, pushHistory, setNodes, setCurrentFlowchart]);
 
-  /** Create a new node at flowX/flowY and connect it from sourceNodeId */
   const handleAddConnectedNode = useCallback((sourceNodeId, nodeType, defaultLabel, flowX, flowY) => {
     const newId = `manual-${Date.now()}`;
     const rfType =
       nodeType === 'decision' ? 'decision'
-      : nodeType === 'start' || nodeType === 'end' ? 'startEnd'
+      : (nodeType === 'start' || nodeType === 'end') ? 'startEnd'
       : nodeType === 'io' ? 'io'
       : nodeType === 'database' ? 'database'
       : nodeType === 'document' ? 'document'
@@ -211,7 +283,6 @@ export default function App() {
       position: { x: flowX, y: flowY },
       data: { label: defaultLabel, nodeType },
     };
-
     const newEdge = {
       id: `e-${sourceNodeId}-${newId}-${Date.now()}`,
       source: sourceNodeId,
@@ -220,7 +291,6 @@ export default function App() {
       style: { stroke: '#64748b', strokeWidth: 2 },
       markerEnd: { type: 'arrowclosed', color: '#64748b' },
     };
-
     const newNodes = [...nodes, newNode];
     const newEdges = [...edges, newEdge];
     const newFlowchart = currentFlowchart
@@ -229,16 +299,13 @@ export default function App() {
           nodes: [...currentFlowchart.nodes, { id: newId, type: nodeType, text: defaultLabel }],
           edges: [...currentFlowchart.edges, { from: sourceNodeId, to: newId, label: '' }],
         }
-      : {
-          nodes: [{ id: newId, type: nodeType, text: defaultLabel }],
-          edges: [],
-        };
+      : { nodes: [{ id: newId, type: nodeType, text: defaultLabel }], edges: [] };
 
     setNodes(newNodes);
     setEdges(newEdges);
     setCurrentFlowchart(newFlowchart);
     pushHistory(newNodes, newEdges, newFlowchart);
-  }, [nodes, edges, currentFlowchart, pushHistory, setNodes, setEdges]);
+  }, [nodes, edges, currentFlowchart, pushHistory, setNodes, setEdges, setCurrentFlowchart]);
 
   // ─── Chat / confirm / cancel ───────────────────────────────────────────────
 
@@ -259,9 +326,7 @@ export default function App() {
 
     const lang = detectLanguage(userInput);
     setDetectedLanguage(lang);
-
     if (pendingFlowchart) setPendingFlowchart(null);
-
     addMessage('user', userInput);
     setIsLoading(true);
 
@@ -335,6 +400,12 @@ export default function App() {
             onRedo={redo}
             canUndo={canUndo}
             canRedo={canRedo}
+            pages={pages}
+            currentPageId={currentPageId}
+            onAddPage={addPage}
+            onSwitchPage={switchPage}
+            onDeletePage={deletePage}
+            onRenamePage={renamePage}
           />
         </div>
       </div>

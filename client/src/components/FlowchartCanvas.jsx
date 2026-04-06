@@ -360,7 +360,7 @@ function ExportDropdown({ onExport, isExporting, disabled }) {
 
 // ─── Canvas toolbar ───────────────────────────────────────────────────────────
 
-function CanvasToolbar({ nodeCount, edgeCount, onExport, isExporting, detectedLanguage, onAddNodeClick, showAddPanel, onUndo, onRedo, canUndo, canRedo }) {
+function CanvasToolbar({ nodeCount, edgeCount, onExport, isExporting, detectedLanguage, onAddNodeClick, showAddPanel, onUndo, onRedo, canUndo, canRedo, onSettingsClick, showSettings }) {
   return (
     <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2 pointer-events-none">
       {/* Left: Stats + Undo/Redo */}
@@ -427,12 +427,219 @@ function CanvasToolbar({ nodeCount, edgeCount, onExport, isExporting, detectedLa
           Add Shape
         </button>
 
+        {/* Settings gear */}
+        <button
+          onClick={onSettingsClick}
+          title="Canvas settings"
+          className={`
+            flex items-center justify-center w-8 h-8 rounded-xl border shadow-lg transition-all duration-150
+            ${showSettings
+              ? 'bg-indigo-600 border-indigo-500 text-white'
+              : 'bg-gray-900/90 backdrop-blur-md border-gray-700/80 text-gray-400 hover:text-white hover:border-gray-600 hover:bg-gray-800/90'}
+          `}
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+
         <ExportDropdown
           onExport={onExport}
           isExporting={isExporting}
           disabled={isExporting || nodeCount === 0}
         />
       </div>
+    </div>
+  );
+}
+
+// ─── Page background (A4 / Letter boundary) ──────────────────────────────────
+
+const PAGE_SIZES = {
+  a4:     { w: 827, h: 1169, label: 'A4' },
+  letter: { w: 816, h: 1056, label: 'Letter' },
+};
+
+function PageBackground({ mode, viewport }) {
+  if (mode === 'infinite') return null;
+  const size = PAGE_SIZES[mode];
+  const { x: vpX, y: vpY, zoom } = viewport;
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{ left: vpX, top: vpY, width: size.w * zoom, height: size.h * zoom, zIndex: 1 }}
+    >
+      <div className="w-full h-full border-2 border-slate-500/40 bg-slate-900/20 shadow-2xl" />
+      <span className="absolute -top-5 left-0 text-[10px] text-slate-500 font-mono select-none">
+        {size.label}
+      </span>
+    </div>
+  );
+}
+
+// ─── Smart guides overlay ─────────────────────────────────────────────────────
+
+function SmartGuides({ guides, viewport, wrapperRef }) {
+  if (!guides.h.length && !guides.v.length) return null;
+  const { x: vpX, y: vpY, zoom } = viewport;
+  const rect = wrapperRef.current?.getBoundingClientRect();
+  const W = rect?.width  || window.innerWidth;
+  const H = rect?.height || window.innerHeight;
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 15 }}>
+      <svg width={W} height={H} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
+        {guides.v.map((fx, i) => {
+          const sx = fx * zoom + vpX;
+          return <line key={`v${i}`} x1={sx} y1={0} x2={sx} y2={H} stroke="#6366f1" strokeWidth={1} strokeDasharray="5 3" opacity={0.75} />;
+        })}
+        {guides.h.map((fy, i) => {
+          const sy = fy * zoom + vpY;
+          return <line key={`h${i}`} x1={0} y1={sy} x2={W} y2={sy} stroke="#6366f1" strokeWidth={1} strokeDasharray="5 3" opacity={0.75} />;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ─── Canvas settings panel ────────────────────────────────────────────────────
+
+function SettingsToggle({ label, checked, onChange }) {
+  return (
+    <label className="flex items-center justify-between cursor-pointer group">
+      <span className="text-gray-400 text-xs group-hover:text-gray-300 transition-colors">{label}</span>
+      <button
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 transition-colors duration-200
+          ${checked ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-700 border-gray-600'}`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform duration-200 mt-px
+          ${checked ? 'translate-x-4' : 'translate-x-px'}`} />
+      </button>
+    </label>
+  );
+}
+
+function CanvasSettingsPanel({ gridVisible, onGridToggle, snapEnabled, onSnapToggle, snapSize, onSnapSizeChange, pageMode, onPageModeChange, onClose }) {
+  return (
+    <div className="absolute top-14 right-3 z-40 w-60 bg-gray-900/98 backdrop-blur-md border border-gray-700/80 rounded-2xl shadow-2xl shadow-black/60 p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-gray-200 font-semibold text-sm">Canvas Settings</h3>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition-colors">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      {/* Grid */}
+      <div className="space-y-2.5">
+        <p className="text-gray-600 text-[10px] uppercase tracking-wider font-semibold">Grid</p>
+        <SettingsToggle label="Show grid" checked={gridVisible} onChange={onGridToggle} />
+        <SettingsToggle label="Snap to grid" checked={snapEnabled} onChange={onSnapToggle} />
+        {snapEnabled && (
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400 text-xs">Grid size</span>
+            <div className="flex gap-1">
+              {[16, 20, 24, 32].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => onSnapSizeChange(s)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors
+                    ${snapSize === s ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* View mode */}
+      <div className="space-y-2">
+        <p className="text-gray-600 text-[10px] uppercase tracking-wider font-semibold">View Mode</p>
+        {[
+          { id: 'infinite', icon: '∞', label: 'Infinite canvas' },
+          { id: 'a4',       icon: '📄', label: 'A4 page' },
+          { id: 'letter',   icon: '📄', label: 'Letter page' },
+        ].map(({ id, icon, label }) => (
+          <button
+            key={id}
+            onClick={() => onPageModeChange(id)}
+            className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs transition-colors text-left
+              ${pageMode === id ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/40' : 'text-gray-400 hover:bg-gray-800 border border-transparent'}`}
+          >
+            <span>{icon}</span>
+            <span>{label}</span>
+            {pageMode === id && <svg className="w-3 h-3 ml-auto text-indigo-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Page tabs ────────────────────────────────────────────────────────────────
+
+function PageTabs({ pages, currentPageId, onAdd, onSwitch, onDelete, onRename }) {
+  const [renaming, setRenaming] = useState(null);
+  const [renameVal, setRenameVal] = useState('');
+  const renameRef = useRef(null);
+
+  useEffect(() => {
+    if (renaming) renameRef.current?.focus();
+  }, [renaming]);
+
+  const commitRename = () => {
+    if (renaming && renameVal.trim()) onRename(renaming, renameVal.trim());
+    setRenaming(null);
+  };
+
+  return (
+    <div className="flex-shrink-0 h-9 bg-gray-900/95 border-t border-gray-800/80 flex items-center px-2 gap-0.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+      {pages.map((page) => (
+        <div key={page.id} className="flex-shrink-0">
+          {renaming === page.id ? (
+            <input
+              ref={renameRef}
+              value={renameVal}
+              onChange={(e) => setRenameVal(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null); }}
+              className="h-6 px-2 bg-gray-800 border border-indigo-500/70 rounded text-xs text-gray-200 outline-none w-24"
+            />
+          ) : (
+            <div className={`flex items-center gap-1 px-2.5 h-6 rounded-t text-xs font-medium cursor-pointer select-none transition-colors group
+              ${page.id === currentPageId
+                ? 'bg-gray-800 text-gray-200 border-t border-x border-gray-700/80'
+                : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/60'}`}
+              onClick={() => onSwitch(page.id)}
+              onDoubleClick={() => { setRenaming(page.id); setRenameVal(page.name); }}
+            >
+              <span className="max-w-[80px] truncate">{page.name}</span>
+              {pages.length > 1 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(page.id); }}
+                  className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-all ml-0.5 leading-none"
+                  title="Delete page"
+                >
+                  <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Add page button */}
+      <button
+        onClick={onAdd}
+        title="Add page"
+        className="flex-shrink-0 flex items-center justify-center w-6 h-6 ml-1 rounded text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+      </button>
     </div>
   );
 }
@@ -507,6 +714,13 @@ export default function FlowchartCanvas({
   onRedo,
   canUndo,
   canRedo,
+  // Multi-page props
+  pages,
+  currentPageId,
+  onAddPage,
+  onSwitchPage,
+  onDeletePage,
+  onRenamePage,
 }) {
   const reactFlowWrapper = useRef(null);
   const { fitView, project } = useReactFlow();
@@ -514,6 +728,19 @@ export default function FlowchartCanvas({
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [connectionPopup, setConnectionPopup] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // ─── Canvas settings ──────────────────────────────────────────────────────
+  const [showSettings, setShowSettings] = useState(false);
+  const [gridVisible, setGridVisible] = useState(true);
+  const [snapEnabled, setSnapEnabled] = useState(false);
+  const [snapSize, setSnapSize] = useState(20);
+  const [pageMode, setPageMode] = useState('infinite');
+
+  // ─── Viewport tracking (for page background + smart guides) ──────────────
+  const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
+
+  // ─── Smart guides ─────────────────────────────────────────────────────────
+  const [guides, setGuides] = useState({ h: [], v: [] });
 
   // Track when an edge reconnect is in progress to prevent accidental deletes
   const edgeReconnectSuccessful = useRef(true);
@@ -594,6 +821,45 @@ export default function FlowchartCanvas({
 
     connectingRef.current = null;
   }, [project]);
+
+  // ─── Smart guides ─────────────────────────────────────────────────────────────
+
+  const handleNodeDrag = useCallback((_event, draggedNode) => {
+    const SNAP = 8;
+    const dW = draggedNode.width  || 160;
+    const dH = draggedNode.height || 48;
+    const dCX = draggedNode.position.x + dW / 2;
+    const dCY = draggedNode.position.y + dH / 2;
+    const dL  = draggedNode.position.x;
+    const dR  = draggedNode.position.x + dW;
+    const dT  = draggedNode.position.y;
+    const dB  = draggedNode.position.y + dH;
+
+    const h = new Set(), v = new Set();
+    for (const node of nodes) {
+      if (node.id === draggedNode.id) continue;
+      const nW = node.width  || 160;
+      const nH = node.height || 48;
+      const nCX = node.position.x + nW / 2;
+      const nCY = node.position.y + nH / 2;
+      const nL  = node.position.x;
+      const nR  = node.position.x + nW;
+      const nT  = node.position.y;
+      const nB  = node.position.y + nH;
+
+      [[dCX, nCX], [dL, nL], [dR, nR], [dL, nR], [dR, nL]].forEach(([a, b]) => {
+        if (Math.abs(a - b) <= SNAP) v.add(b);
+      });
+      [[dCY, nCY], [dT, nT], [dB, nB], [dT, nB], [dB, nT]].forEach(([a, b]) => {
+        if (Math.abs(a - b) <= SNAP) h.add(b);
+      });
+    }
+    setGuides({ h: [...h], v: [...v] });
+  }, [nodes]);
+
+  const handleNodeDragStop = useCallback(() => {
+    setGuides({ h: [], v: [] });
+  }, []);
 
   // ─── Drag-from-palette-onto-canvas handlers ──────────────────────────────────
 
@@ -734,12 +1000,13 @@ export default function FlowchartCanvas({
 
   return (
     <div
-      ref={reactFlowWrapper}
-      className="relative w-full h-full"
+      className="flex flex-col w-full h-full"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+    {/* Canvas area (takes all space above page tabs) */}
+    <div ref={reactFlowWrapper} className="relative flex-1 min-h-0">
       {/* Drop zone highlight */}
       {isDragOver && (
         <div className="absolute inset-0 z-20 pointer-events-none ring-2 ring-inset ring-indigo-500/60 rounded-none">
@@ -769,8 +1036,25 @@ export default function FlowchartCanvas({
             onRedo={onRedo}
             canUndo={canUndo}
             canRedo={canRedo}
+            onSettingsClick={() => setShowSettings((v) => !v)}
+            showSettings={showSettings}
           />
         </div>
+      )}
+
+      {/* Canvas settings panel */}
+      {showSettings && (
+        <CanvasSettingsPanel
+          gridVisible={gridVisible}
+          onGridToggle={setGridVisible}
+          snapEnabled={snapEnabled}
+          onSnapToggle={setSnapEnabled}
+          snapSize={snapSize}
+          onSnapSizeChange={setSnapSize}
+          pageMode={pageMode}
+          onPageModeChange={setPageMode}
+          onClose={() => setShowSettings(false)}
+        />
       )}
 
       {/* Add Shape panel */}
@@ -780,6 +1064,12 @@ export default function FlowchartCanvas({
           onClose={() => setShowAddPanel(false)}
         />
       )}
+
+      {/* Page background (A4 / Letter mode) */}
+      <PageBackground mode={pageMode} viewport={viewport} />
+
+      {/* Smart guides overlay */}
+      <SmartGuides guides={guides} viewport={viewport} wrapperRef={reactFlowWrapper} />
 
       <ReactFlow
         nodes={enrichedNodes}
@@ -792,6 +1082,11 @@ export default function FlowchartCanvas({
         onEdgeUpdate={handleEdgeUpdate}
         onEdgeUpdateStart={handleEdgeUpdateStart}
         onEdgeUpdateEnd={handleEdgeUpdateEnd}
+        onNodeDrag={handleNodeDrag}
+        onNodeDragStop={handleNodeDragStop}
+        onMove={(_, vp) => setViewport(vp)}
+        snapToGrid={snapEnabled}
+        snapGrid={[snapSize, snapSize]}
         edgeUpdaterRadius={20}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -807,12 +1102,14 @@ export default function FlowchartCanvas({
         connectionLineStyle={{ stroke: '#6366f1', strokeWidth: 2 }}
         connectionLineType="smoothstep"
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={24}
-          size={1}
-          color="#1e293b"
-        />
+        {gridVisible && (
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={snapEnabled ? snapSize : 24}
+            size={1}
+            color="#1e293b"
+          />
+        )}
         <Controls
           position="bottom-right"
           showInteractive={false}
@@ -849,6 +1146,19 @@ export default function FlowchartCanvas({
           onClose={() => setConnectionPopup(null)}
         />
       )}
+    </div>{/* end canvas area */}
+
+    {/* Multi-page tabs */}
+    {pages && (
+      <PageTabs
+        pages={pages}
+        currentPageId={currentPageId}
+        onAdd={onAddPage}
+        onSwitch={onSwitchPage}
+        onDelete={onDeletePage}
+        onRename={onRenamePage}
+      />
+    )}
     </div>
   );
 }
