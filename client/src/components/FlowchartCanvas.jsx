@@ -513,6 +513,7 @@ export default function FlowchartCanvas({
   const [isExporting, setIsExporting] = React.useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [connectionPopup, setConnectionPopup] = useState(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Track when an edge reconnect is in progress to prevent accidental deletes
   const edgeReconnectSuccessful = useRef(true);
@@ -593,6 +594,41 @@ export default function FlowchartCanvas({
 
     connectingRef.current = null;
   }, [project]);
+
+  // ─── Drag-from-palette-onto-canvas handlers ──────────────────────────────────
+
+  const handleDragOver = useCallback((e) => {
+    if (!e.dataTransfer.types.includes('application/flowmind-node-type')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e) => {
+    // Only clear if the pointer truly left the wrapper element
+    if (!reactFlowWrapper.current?.contains(e.relatedTarget)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const nodeType = e.dataTransfer.getData('application/flowmind-node-type');
+    const defaultLabel = e.dataTransfer.getData('application/flowmind-node-label');
+    if (!nodeType) return;
+
+    const bounds = reactFlowWrapper.current?.getBoundingClientRect();
+    if (!bounds) return;
+
+    const flowPos = project({
+      x: e.clientX - bounds.left,
+      y: e.clientY - bounds.top,
+    });
+
+    onAddNode?.(nodeType, defaultLabel, flowPos.x, flowPos.y);
+  }, [project, onAddNode]);
 
   // ─── Edge reconnect handlers ────────────────────────────────────────────────
 
@@ -697,7 +733,27 @@ export default function FlowchartCanvas({
   }), []);
 
   return (
-    <div ref={reactFlowWrapper} className="relative w-full h-full">
+    <div
+      ref={reactFlowWrapper}
+      className="relative w-full h-full"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drop zone highlight */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-20 pointer-events-none ring-2 ring-inset ring-indigo-500/60 rounded-none">
+          <div className="absolute inset-0 bg-indigo-500/5" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-gray-900/90 border border-indigo-500/60 rounded-2xl px-6 py-3 shadow-2xl flex items-center gap-2.5">
+              <svg className="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              <span className="text-indigo-200 font-medium text-sm">Drop to place shape</span>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Toolbar */}
       {hasContent && (
         <div className="canvas-toolbar">

@@ -166,6 +166,7 @@ function LanguagePicker({ value, onChange }) {
 function ManualPalette({ onAddNode }) {
   const [adding, setAdding] = useState(null); // type being named
   const [label, setLabel] = useState('');
+  const [dragging, setDragging] = useState(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -183,35 +184,51 @@ function ManualPalette({ onAddNode }) {
     setLabel('');
   };
 
+  const handleDragStart = (e, shape) => {
+    e.dataTransfer.setData('application/flowmind-node-type', shape.type);
+    e.dataTransfer.setData('application/flowmind-node-label', shape.label);
+    e.dataTransfer.effectAllowed = 'copy';
+    setDragging(shape.type);
+    setAdding(null); // close any open label input
+  };
+
   return (
     <div className="flex flex-col h-full px-4 py-4 gap-4 overflow-y-auto">
       {/* Title */}
       <div>
         <h2 className="text-gray-200 font-semibold text-sm">Shape Palette</h2>
-        <p className="text-gray-500 text-xs mt-0.5">Click a shape to add it to the canvas</p>
+        <p className="text-gray-500 text-xs mt-0.5">
+          Click to add · <span className="text-indigo-400">drag onto canvas</span> to place
+        </p>
       </div>
 
       {/* Shape grid */}
       <div className="grid grid-cols-2 gap-2">
         {PALETTE_SHAPES.map((shape) => (
-          <button
+          <div
             key={shape.type}
+            draggable
+            onDragStart={(e) => handleDragStart(e, shape)}
+            onDragEnd={() => setDragging(null)}
             onClick={() => setAdding(shape.type === adding ? null : shape.type)}
             className={`
               flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all duration-150 text-left
-              ${adding === shape.type
+              cursor-grab active:cursor-grabbing select-none
+              ${dragging === shape.type
+                ? 'opacity-50 scale-95'
+                : adding === shape.type
                 ? `${shape.activeBg} ${shape.activeBorder} shadow-sm`
                 : 'bg-gray-800/40 border-gray-700/60 hover:bg-gray-800/70 hover:border-gray-600'}
             `}
           >
-            <div className="w-full">{shape.preview}</div>
-            <div className="w-full">
+            <div className="w-full pointer-events-none">{shape.preview}</div>
+            <div className="w-full pointer-events-none">
               <p className={`text-xs font-semibold leading-none ${adding === shape.type ? shape.color : 'text-gray-300'}`}>
                 {shape.label}
               </p>
               <p className="text-[10px] text-gray-500 mt-0.5">{shape.desc}</p>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 

@@ -164,8 +164,8 @@ export default function App() {
     pushHistory(nodes, newEdges, newFlowchart);
   }, [nodes, edges, currentFlowchart, pushHistory, setEdges]);
 
-  /** Add a new node manually to the canvas */
-  const handleAddNode = useCallback((nodeType, label) => {
+  /** Add a new node manually to the canvas (posX/posY optional — from drag-drop or popup) */
+  const handleAddNode = useCallback((nodeType, label, posX, posY) => {
     const newId = `manual-${Date.now()}`;
     const rfType =
       nodeType === 'decision' ? 'decision'
@@ -179,7 +179,9 @@ export default function App() {
     const newNode = {
       id: newId,
       type: rfType,
-      position: { x: 280 + Math.random() * 120, y: 240 + Math.random() * 120 },
+      position: (posX != null && posY != null)
+        ? { x: posX, y: posY }
+        : { x: 280 + Math.random() * 120, y: 240 + Math.random() * 120 },
       data: { label, nodeType },
     };
     const newNodes = [...nodes, newNode];
