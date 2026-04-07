@@ -104,8 +104,8 @@ const StartEndNode = memo(({ id, data, selected }) => {
 
   return (
     <div
-      className={`flowmind-node relative flex items-center justify-center px-4 rounded-full bg-gradient-to-r ${gradientClass} border ${borderClass} shadow-lg ${shadowClass} ${ringClass} select-none transition-all duration-200`}
-      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      className={`flowmind-node relative select-none ${ringClass}`}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
@@ -120,6 +120,30 @@ const StartEndNode = memo(({ id, data, selected }) => {
         <RotationHandle id={id} data={data} />
       )}
 
+      {/* Rotating visual layer */}
+      <div
+        className={`absolute inset-0 flex items-center justify-center px-4 rounded-full bg-gradient-to-r ${gradientClass} border ${borderClass} shadow-lg ${shadowClass} transition-all duration-200`}
+        style={{ transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      >
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            value={editLabel}
+            onChange={(e) => setEditLabel(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={handleKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            className={`bg-white/10 text-white text-sm font-semibold text-center rounded-full px-2 py-0.5 outline-none border ${inputBorderClass} nodrag`}
+            style={{ minWidth: '60px', maxWidth: '150px', width: '100%' }}
+          />
+        ) : (
+          <>
+            <span className="mr-1.5 text-sm" aria-hidden="true">{isStart ? '▶' : '■'}</span>
+            <span className="text-white font-semibold text-sm leading-tight truncate">{data.label}</span>
+          </>
+        )}
+      </div>
+
       {/* Bidirectional handles at all 4 positions */}
       <Handle type="target" position={Position.Top}    id="top-t"    style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', top: -4 }} />
       <Handle type="source" position={Position.Top}    id="top-s"    style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', top: -4 }} />
@@ -127,24 +151,6 @@ const StartEndNode = memo(({ id, data, selected }) => {
       <Handle type="source" position={Position.Left}   id="left-s"   style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', left: -4 }} />
       <Handle type="target" position={Position.Right}  id="right-t"  style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', right: -4 }} />
       <Handle type="source" position={Position.Right}  id="right-s"  style={{ background: handleColor, width: 8, height: 8, border: '2px solid #0f172a', right: -4 }} />
-
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          value={editLabel}
-          onChange={(e) => setEditLabel(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={handleKeyDown}
-          onClick={(e) => e.stopPropagation()}
-          className={`bg-white/10 text-white text-sm font-semibold text-center rounded-full px-2 py-0.5 outline-none border ${inputBorderClass} nodrag`}
-          style={{ minWidth: '60px', maxWidth: '150px', width: '100%' }}
-        />
-      ) : (
-        <>
-          <span className="mr-1.5 text-sm" aria-hidden="true">{isStart ? '▶' : '■'}</span>
-          <span className="text-white font-semibold text-sm leading-tight truncate">{data.label}</span>
-        </>
-      )}
 
       {/* Delete button */}
       {selected && !isEditing && (

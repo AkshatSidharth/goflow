@@ -91,7 +91,7 @@ const DatabaseNode = memo(({ id, data, selected }) => {
   return (
     <div
       className={`flowmind-node relative select-none ${ringClass}`}
-      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
@@ -106,61 +106,64 @@ const DatabaseNode = memo(({ id, data, selected }) => {
         <RotationHandle id={id} data={data} />
       )}
 
-      {/* Cylinder SVG */}
-      <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${nodeW} ${nodeH}`} overflow="visible">
-        {/* Body */}
-        <rect
-          x="1" y={ry} width={nodeW - 2} height={nodeH - ry * 2}
-          fill="rgba(109,40,217,0.25)"
-          stroke="rgba(139,92,246,0.7)"
-          strokeWidth="1.5"
-        />
-        {/* Bottom ellipse */}
-        <ellipse
-          cx={nodeW / 2} cy={nodeH - ry}
-          rx={rx} ry={ry - 1}
-          fill="rgba(109,40,217,0.35)"
-          stroke="rgba(139,92,246,0.7)"
-          strokeWidth="1.5"
-        />
-        {/* Top ellipse */}
-        <ellipse
-          cx={nodeW / 2} cy={ry}
-          rx={rx} ry={ry - 1}
-          fill="rgba(109,40,217,0.5)"
-          stroke="rgba(139,92,246,0.7)"
-          strokeWidth="1.5"
-        />
-      </svg>
+      {/* Rotating visual layer */}
+      <div style={{ position: 'absolute', inset: 0, transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}>
+        {/* Cylinder SVG */}
+        <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${nodeW} ${nodeH}`} overflow="visible">
+          {/* Body */}
+          <rect
+            x="1" y={ry} width={nodeW - 2} height={nodeH - ry * 2}
+            fill="rgba(109,40,217,0.25)"
+            stroke="rgba(139,92,246,0.7)"
+            strokeWidth="1.5"
+          />
+          {/* Bottom ellipse */}
+          <ellipse
+            cx={nodeW / 2} cy={nodeH - ry}
+            rx={rx} ry={ry - 1}
+            fill="rgba(109,40,217,0.35)"
+            stroke="rgba(139,92,246,0.7)"
+            strokeWidth="1.5"
+          />
+          {/* Top ellipse */}
+          <ellipse
+            cx={nodeW / 2} cy={ry}
+            rx={rx} ry={ry - 1}
+            fill="rgba(109,40,217,0.5)"
+            stroke="rgba(139,92,246,0.7)"
+            strokeWidth="1.5"
+          />
+        </svg>
+
+        {/* Label */}
+        <div className="absolute inset-0 flex items-center justify-center px-3" style={{ paddingTop: ry }}>
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              value={editLabel}
+              onChange={(e) => setEditLabel(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-violet-900/80 text-violet-100 text-xs font-semibold text-center rounded px-2 py-0.5 outline-none border border-violet-400 nodrag w-full"
+              style={{ maxWidth: 110 }}
+            />
+          ) : (
+            <div className="flex items-center gap-1">
+              <span className="text-violet-400 text-xs flex-shrink-0">⬡</span>
+              <span className="text-violet-100 font-medium text-xs leading-snug text-center break-words hyphens-auto">
+                {data.label}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Bidirectional handles at all 4 positions */}
       <Handle type="target" position={Position.Top}    id="top-t"    style={{ background: '#a78bfa', width: 8, height: 8, border: '2px solid #0f172a', top: -4, left: '50%', transform: 'translateX(-50%)' }} />
       <Handle type="source" position={Position.Top}    id="top-s"    style={{ background: '#a78bfa', width: 8, height: 8, border: '2px solid #0f172a', top: -4, left: '50%', transform: 'translateX(-50%)' }} />
       <Handle type="target" position={Position.Left}   id="left-t"   style={{ background: '#a78bfa', width: 8, height: 8, border: '2px solid #0f172a', left: -4, top: '50%', transform: 'translateY(-50%)' }} />
       <Handle type="source" position={Position.Left}   id="left-s"   style={{ background: '#a78bfa', width: 8, height: 8, border: '2px solid #0f172a', left: -4, top: '50%', transform: 'translateY(-50%)' }} />
-
-      {/* Label */}
-      <div className="absolute inset-0 flex items-center justify-center px-3" style={{ paddingTop: ry }}>
-        {isEditing ? (
-          <input
-            ref={inputRef}
-            value={editLabel}
-            onChange={(e) => setEditLabel(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={handleKeyDown}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-violet-900/80 text-violet-100 text-xs font-semibold text-center rounded px-2 py-0.5 outline-none border border-violet-400 nodrag w-full"
-            style={{ maxWidth: 110 }}
-          />
-        ) : (
-          <div className="flex items-center gap-1">
-            <span className="text-violet-400 text-xs flex-shrink-0">⬡</span>
-            <span className="text-violet-100 font-medium text-xs leading-snug text-center break-words hyphens-auto">
-              {data.label}
-            </span>
-          </div>
-        )}
-      </div>
 
       {/* Delete button */}
       {selected && !isEditing && (

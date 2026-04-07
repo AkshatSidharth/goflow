@@ -96,7 +96,7 @@ const DecisionNode = memo(({ id, data, selected }) => {
   return (
     <div
       className={`flowmind-node relative select-none ${ringClass}`}
-      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
@@ -111,42 +111,45 @@ const DecisionNode = memo(({ id, data, selected }) => {
         <RotationHandle id={id} data={data} />
       )}
 
-      {/* Diamond via SVG — scales with node size */}
-      <svg
-        className="absolute inset-0 w-full h-full"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        style={{ overflow: 'visible' }}
-      >
-        <polygon
-          points="50,3 97,50 50,97 3,50"
-          fill="rgba(120,53,15,0.8)"
-          stroke="rgba(245,158,11,0.7)"
-          strokeWidth="1.5"
-        />
-      </svg>
-
-      {/* Label / edit input */}
-      <div
-        className="absolute inset-0 flex items-center justify-center px-3"
-        style={{ pointerEvents: isEditing ? 'auto' : 'none' }}
-      >
-        {isEditing ? (
-          <input
-            ref={inputRef}
-            value={editLabel}
-            onChange={(e) => setEditLabel(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={handleKeyDown}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-amber-900/80 text-amber-100 text-xs font-semibold text-center rounded-lg px-2 py-1 outline-none border border-amber-400 nodrag"
-            style={{ maxWidth: '120px', width: '100%', pointerEvents: 'auto' }}
+      {/* Rotating visual layer */}
+      <div style={{ position: 'absolute', inset: 0, transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}>
+        {/* Diamond via SVG — scales with node size */}
+        <svg
+          className="absolute inset-0 w-full h-full"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          style={{ overflow: 'visible' }}
+        >
+          <polygon
+            points="50,3 97,50 50,97 3,50"
+            fill="rgba(120,53,15,0.8)"
+            stroke="rgba(245,158,11,0.7)"
+            strokeWidth="1.5"
           />
-        ) : (
-          <span className="text-amber-100 font-semibold text-xs leading-snug text-center break-words hyphens-auto max-w-[120px]">
-            {data.label}
-          </span>
-        )}
+        </svg>
+
+        {/* Label / edit input */}
+        <div
+          className="absolute inset-0 flex items-center justify-center px-3"
+          style={{ pointerEvents: isEditing ? 'auto' : 'none' }}
+        >
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              value={editLabel}
+              onChange={(e) => setEditLabel(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-amber-900/80 text-amber-100 text-xs font-semibold text-center rounded-lg px-2 py-1 outline-none border border-amber-400 nodrag"
+              style={{ maxWidth: '120px', width: '100%', pointerEvents: 'auto' }}
+            />
+          ) : (
+            <span className="text-amber-100 font-semibold text-xs leading-snug text-center break-words hyphens-auto max-w-[120px]">
+              {data.label}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Delete button */}

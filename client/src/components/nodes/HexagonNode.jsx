@@ -98,7 +98,7 @@ const HexagonNode = memo(({ id, data, selected }) => {
   return (
     <div
       className={`flowmind-node relative select-none ${ringClass}`}
-      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
@@ -113,41 +113,44 @@ const HexagonNode = memo(({ id, data, selected }) => {
         <RotationHandle id={id} data={data} />
       )}
 
-      {/* Hexagon SVG */}
-      <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${nodeW} ${nodeH}`} overflow="visible">
-        <polygon
-          points={pts}
-          fill="rgba(194,65,12,0.25)"
-          stroke="rgba(249,115,22,0.7)"
-          strokeWidth="1.5"
-        />
-      </svg>
+      {/* Rotating visual layer */}
+      <div style={{ position: 'absolute', inset: 0, transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}>
+        {/* Hexagon SVG */}
+        <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${nodeW} ${nodeH}`} overflow="visible">
+          <polygon
+            points={pts}
+            fill="rgba(194,65,12,0.25)"
+            stroke="rgba(249,115,22,0.7)"
+            strokeWidth="1.5"
+          />
+        </svg>
+
+        {/* Label */}
+        <div className="absolute inset-0 flex items-center justify-center px-8">
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              value={editLabel}
+              onChange={(e) => setEditLabel(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-orange-900/80 text-orange-100 text-xs font-semibold text-center rounded px-2 py-0.5 outline-none border border-orange-400 nodrag w-full"
+              style={{ maxWidth: 110 }}
+            />
+          ) : (
+            <span className="text-orange-100 font-medium text-xs leading-snug text-center break-words hyphens-auto">
+              {data.label}
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* Bidirectional handles at all 4 positions */}
       <Handle type="target" position={Position.Top}    id="top-t"    style={{ background: '#fb923c', width: 8, height: 8, border: '2px solid #0f172a', top: -4, left: '50%', transform: 'translateX(-50%)' }} />
       <Handle type="source" position={Position.Top}    id="top-s"    style={{ background: '#fb923c', width: 8, height: 8, border: '2px solid #0f172a', top: -4, left: '50%', transform: 'translateX(-50%)' }} />
       <Handle type="target" position={Position.Left}   id="left-t"   style={{ background: '#fb923c', width: 8, height: 8, border: '2px solid #0f172a', left: -4, top: '50%', transform: 'translateY(-50%)' }} />
       <Handle type="source" position={Position.Left}   id="left-s"   style={{ background: '#fb923c', width: 8, height: 8, border: '2px solid #0f172a', left: -4, top: '50%', transform: 'translateY(-50%)' }} />
-
-      {/* Label */}
-      <div className="absolute inset-0 flex items-center justify-center px-8">
-        {isEditing ? (
-          <input
-            ref={inputRef}
-            value={editLabel}
-            onChange={(e) => setEditLabel(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={handleKeyDown}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-orange-900/80 text-orange-100 text-xs font-semibold text-center rounded px-2 py-0.5 outline-none border border-orange-400 nodrag w-full"
-            style={{ maxWidth: 110 }}
-          />
-        ) : (
-          <span className="text-orange-100 font-medium text-xs leading-snug text-center break-words hyphens-auto">
-            {data.label}
-          </span>
-        )}
-      </div>
 
       {/* Delete button */}
       {selected && !isEditing && (

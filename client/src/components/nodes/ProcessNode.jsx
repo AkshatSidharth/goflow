@@ -96,8 +96,8 @@ const ProcessNode = memo(({ id, data, selected }) => {
 
   return (
     <div
-      className={`flowmind-node relative flex items-center justify-center px-3 py-2 rounded-xl bg-slate-800/90 backdrop-blur-sm border border-slate-600/60 shadow-lg shadow-slate-900/60 ${ringClass} select-none transition-all duration-200 hover:border-slate-500 hover:shadow-slate-800/40`}
-      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default', transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      className={`flowmind-node relative select-none ${ringClass}`}
+      style={{ width: nodeW, height: nodeH, cursor: isEditing ? 'text' : 'default' }}
       onDoubleClick={handleDoubleClick}
     >
       <NodeResizer
@@ -112,6 +112,39 @@ const ProcessNode = memo(({ id, data, selected }) => {
         <RotationHandle id={id} data={data} />
       )}
 
+      {/* Rotating visual layer */}
+      <div
+        className="absolute inset-0 flex items-center justify-center px-3 py-2 rounded-xl bg-slate-800/90 backdrop-blur-sm border border-slate-600/60 shadow-lg shadow-slate-900/60 transition-all duration-200 hover:border-slate-500"
+        style={{ transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' }}
+      >
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            value={editLabel}
+            onChange={(e) => setEditLabel(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={handleKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-700 text-slate-100 text-sm font-medium text-center rounded-lg px-2 py-1 outline-none border border-indigo-500 w-full nodrag"
+            style={{ minWidth: '80px', maxWidth: '180px' }}
+          />
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 text-xs flex-shrink-0" aria-hidden="true">⬡</span>
+            <span className="text-slate-100 font-medium text-sm leading-snug text-center break-words hyphens-auto">
+              {data.label}
+            </span>
+          </div>
+        )}
+
+        {/* Edit hint on hover */}
+        {!isEditing && !selected && (
+          <div className="absolute inset-x-0 -bottom-5 flex justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+            <span className="text-[9px] text-gray-500">double-click to edit</span>
+          </div>
+        )}
+      </div>
+
       {/* Bidirectional handles — each position has both source + target stacked */}
       <Handle type="target" position={Position.Top}    id="top-t"    style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', top: -4 }} />
       <Handle type="source" position={Position.Top}    id="top-s"    style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', top: -4 }} />
@@ -121,26 +154,6 @@ const ProcessNode = memo(({ id, data, selected }) => {
       <Handle type="source" position={Position.Left}   id="left-s"   style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', left: -4 }} />
       <Handle type="target" position={Position.Right}  id="right-t"  style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', right: -4 }} />
       <Handle type="source" position={Position.Right}  id="right-s"  style={{ background: '#94a3b8', width: 8, height: 8, border: '2px solid #0f172a', right: -4 }} />
-
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          value={editLabel}
-          onChange={(e) => setEditLabel(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={handleKeyDown}
-          onClick={(e) => e.stopPropagation()}
-          className="bg-slate-700 text-slate-100 text-sm font-medium text-center rounded-lg px-2 py-1 outline-none border border-indigo-500 w-full nodrag"
-          style={{ minWidth: '80px', maxWidth: '180px' }}
-        />
-      ) : (
-        <div className="flex items-center gap-2">
-          <span className="text-slate-500 text-xs flex-shrink-0" aria-hidden="true">⬡</span>
-          <span className="text-slate-100 font-medium text-sm leading-snug text-center break-words hyphens-auto">
-            {data.label}
-          </span>
-        </div>
-      )}
 
       {/* Delete button — shown when selected */}
       {selected && !isEditing && (
@@ -152,13 +165,6 @@ const ProcessNode = memo(({ id, data, selected }) => {
         >
           ×
         </button>
-      )}
-
-      {/* Edit hint on hover */}
-      {!isEditing && !selected && (
-        <div className="absolute inset-x-0 -bottom-5 flex justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-          <span className="text-[9px] text-gray-500">double-click to edit</span>
-        </div>
       )}
 
     </div>
